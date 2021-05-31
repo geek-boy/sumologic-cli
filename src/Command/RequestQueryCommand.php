@@ -10,6 +10,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use DateTime;
 
 use App\Controller\ApiController;
 
@@ -47,6 +48,12 @@ class RequestQueryCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $start_time = $input->getArgument('start_time');
+        $start_time_check = $this->verifyDate($start_time, $output);
+
+        $end_time = $input->getArgument('end_time');
+        $end_time_check = $this->verifyDate($end_time, $output);
+
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
         if (!$fsObject->exists($query_file)) {
@@ -63,8 +70,7 @@ class RequestQueryCommand extends Command
         $output->writeln('Making request to Sumologic Jobs for Query :' . PHP_EOL);
         $output->writeln($query. PHP_EOL);
 
-        $start_time = $input->getArgument('start_time');
-        $end_time = $input->getArgument('end_time');
+        
 
         // Clean up formatting so as to pass this properly to API end
         $query = str_replace('"','\"',$query);
@@ -243,5 +249,19 @@ class RequestQueryCommand extends Command
         $return_arr['is_polaris'] = $is_polaris;
 
         return $return_arr;
+    }
+
+    function verifyDate($check_time, $output) {
+
+        $time_format = "Y-m-d\TH:i:s";
+        $check_time_obj=DateTime::createFromFormat($time_format, $check_time);
+        if(!$check_time_obj)
+        {
+            print_r($check_time_obj);
+            $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            // return Command::FAILURE;
+            exit();
+        }
+
     }
 }
