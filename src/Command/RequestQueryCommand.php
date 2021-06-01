@@ -13,6 +13,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use DateTime;
 
 use App\Controller\ApiController;
+define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
 
 class RequestQueryCommand extends Command
 {
@@ -54,6 +55,7 @@ class RequestQueryCommand extends Command
             $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
             return Command::FAILURE;
         }
+        $start_time=$start_time_obj->format(ISO_DATE_FORMAT);
 
         $end_time = $input->getArgument('end_time');
          if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
@@ -61,6 +63,7 @@ class RequestQueryCommand extends Command
             $output->writeln("Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00");
             return Command::FAILURE;
          }     
+         $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
 
          if (!($end_time_obj->getTimestamp() > $start_time_obj->getTimestamp())) {
             $output->writeln("End date and time needs to greater than the start date and time");
@@ -264,10 +267,12 @@ class RequestQueryCommand extends Command
         return $return_arr;
     }
 
+    // Function to check time is in ISO date-time format. 
+    // Returns DateTime object if success and FALSE in case of failure.
+
     function isDateFormatCorrect($check_time) {
 
-        $time_format = "Y-m-d\TH:i:s";
-        $check_time_obj=DateTime::createFromFormat($time_format, $check_time);
+        $check_time_obj=DateTime::createFromFormat(ISO_DATE_FORMAT, $check_time);
         if(!$check_time_obj)
         {
             return FALSE;
