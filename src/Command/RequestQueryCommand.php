@@ -49,18 +49,23 @@ class RequestQueryCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $start_time = $input->getArgument('start_time');
-        if(!($this->isDateFormatCorrect($start_time, $output)))
+        if(!($start_time_obj = $this->isDateFormatCorrect($start_time, $output)))
         {
             $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
             return Command::FAILURE;
         }
 
         $end_time = $input->getArgument('end_time');
-         if(!($this->isDateFormatCorrect($end_time, $output)))
+         if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
          {
             $output->writeln("Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00");
             return Command::FAILURE;
          }     
+
+         if (!($end_time_obj->getTimestamp() > $start_time_obj->getTimestamp())) {
+            $output->writeln("End date and time needs to greater than the start date and time");
+            return Command::FAILURE; 
+         }
 
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
@@ -268,7 +273,7 @@ class RequestQueryCommand extends Command
             return FALSE;
 
         }
-        return TRUE;
+        return $check_time_obj;
 
     }
 }
