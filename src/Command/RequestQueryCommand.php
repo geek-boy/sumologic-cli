@@ -41,18 +41,26 @@ class RequestQueryCommand extends Command
 
         //
         ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
-        ->addArgument('start_time', InputArgument::REQUIRED, 'The start time for the Query.')
-        ->addArgument('end_time', InputArgument::REQUIRED, 'The end time for the Query.')
+        ->addArgument('start_time', InputArgument::REQUIRED, 'The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
+        ->addArgument('end_time', InputArgument::REQUIRED, 'The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $start_time = $input->getArgument('start_time');
-        $start_time_check = $this->verifyDate($start_time, $output);
+        if(!($this->isDateFormatCorrect($start_time, $output)))
+        {
+            $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            return Command::FAILURE;
+        }
 
         $end_time = $input->getArgument('end_time');
-        $end_time_check = $this->verifyDate($end_time, $output);
+         if(!($this->isDateFormatCorrect($end_time, $output)))
+         {
+            $output->writeln("Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            return Command::FAILURE;
+         }     
 
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
@@ -251,17 +259,16 @@ class RequestQueryCommand extends Command
         return $return_arr;
     }
 
-    function verifyDate($check_time, $output) {
+    function isDateFormatCorrect($check_time) {
 
         $time_format = "Y-m-d\TH:i:s";
         $check_time_obj=DateTime::createFromFormat($time_format, $check_time);
         if(!$check_time_obj)
         {
-            print_r($check_time_obj);
-            $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
-            // return Command::FAILURE;
-            exit();
+            return FALSE;
+
         }
+        return TRUE;
 
     }
 }
