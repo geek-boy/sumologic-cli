@@ -59,8 +59,8 @@ class RequestQueryCommand extends Command
             'End time as relative time. Examples are: "-3 hours" "-1 week" "-7 days" "2021-06-05T11:09:01"'
         )
         ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
-        ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, 'The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
-        ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, 'The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
+        ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
+        ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
     }
 
