@@ -67,16 +67,12 @@ class RequestQueryCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $start_time_opt = $input->getOption(START_TIME_OPT);
-        // echo "START TIME OPTION: " . var_export($start_time_opt,true) . PHP_EOL;
 
         $end_time_opt = $input->getOption(END_TIME_OPT);
-        // echo "END TIME OPTION: " . var_export($end_time_opt,true) . PHP_EOL;
 
         $start_time = $input->getArgument(START_TIME_ARG);
-        // echo "START TIME ARGUMENT: " . var_export($start_time,true) . PHP_EOL;
 
         $end_time = $input->getArgument(END_TIME_ARG);
-        // echo "END TIME ARGUMENT: " . var_export($end_time,true) . PHP_EOL;
 
         // Check Arguments and Options
         if ($start_time_opt === NULL && $start_time === NULL) {
@@ -243,13 +239,14 @@ class RequestQueryCommand extends Command
         $question = new ConfirmationQuestion('<question>There are ' . $result_count . ' records.' . ' Do you want to download these ?</question>', false);
 
         if (!$helper->ask($input, $output, $question)) {
-            $output->writeln("Ok! No results have been retrieved!");
+            $output->writeln('');
+            $output->writeln("<bg=white;fg=black>Ok! No results have been retrieved!</>");
 
             return Command::SUCCESS;
         }
 
         $output->writeln('');
-        $output->writeln("<info>Grabbing results ...</info>");
+        $output->writeln("<bg=yellow;options=bold>Grabbing results ...</>");
         $save_to_path = null;
         $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000);
         $save_to_path = $result['file_path'];
@@ -260,7 +257,7 @@ class RequestQueryCommand extends Command
             return Command::FAILURE;
         }
         $output->writeln('');
-        $output->writeln("<info>Results saved to " . $save_to_path . "</info>");
+        $output->writeln("<fg=white;bg=blue;options=bold>Results saved to " . $save_to_path . "</>");
         $output->writeln("<info>Results are in json format.</info>");
         $output->writeln('');
         $output->writeln("<info>To view the results you could use the following shell command:</info>");
