@@ -6,6 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
@@ -14,6 +15,10 @@ use DateTime;
 
 use App\Controller\ApiController;
 define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
+define("START_TIME_ARG", "start_time");
+define("END_TIME_ARG", "end_time");
+define("START_TIME_OPT", "start");
+define("END_TIME_OPT", "end");
 
 class RequestQueryCommand extends Command
 {
@@ -41,39 +46,105 @@ class RequestQueryCommand extends Command
         ->setHelp('This command makes a request to the Sumologic Job Search API to create a query.')
 
         //
+        ->addOption(
+            START_TIME_OPT,
+            null,
+            InputOption::VALUE_REQUIRED,
+            'Start time as relative. Examples are: "-3 hours" "-1 week" "-7 days" "2021-06-05T11:09:01"'
+        )
+        ->addOption(
+            END_TIME_OPT,
+            null,
+            InputOption::VALUE_REQUIRED,
+            'End time as relative time. Examples are: "-3 hours" "-1 week" "-7 days" "2021-06-05T11:09:01"'
+        )
         ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
-        ->addArgument('start_time', InputArgument::REQUIRED, 'The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
-        ->addArgument('end_time', InputArgument::REQUIRED, 'The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
+        ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, 'The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
+        ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, 'The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $start_time = $input->getArgument('start_time');
+        $start_time_opt = $input->getOption(START_TIME_OPT);
+        // echo "START TIME OPTION: " . var_export($start_time_opt,true) . PHP_EOL;
+
+        $end_time_opt = $input->getOption(END_TIME_OPT);
+        // echo "END TIME OPTION: " . var_export($end_time_opt,true) . PHP_EOL;
+
+        $start_time = $input->getArgument(START_TIME_ARG);
+        // echo "START TIME ARGUMENT: " . var_export($start_time,true) . PHP_EOL;
+
+        $end_time = $input->getArgument(END_TIME_ARG);
+        // echo "END TIME ARGUMENT: " . var_export($end_time,true) . PHP_EOL;
+
+        // Check Arguments and Options
+        if ($start_time_opt === NULL && $start_time === NULL) {
+            if($end_time_opt !== NULL) {
+                $output->writeln("<error>Please provide a start time option ('--" . START_TIME_OPT . "') with the '--end' option.</error>");
+                return Command::FAILURE;
+            }
+            $output->writeln("<error>Please provide a start time argument in ISO Date format or use the '--" . START_TIME_OPT . "' option.</error>");
+            return Command::FAILURE;
+        }
+
+        if ($start_time_opt !== NULL && $start_time !== NULL) {
+            $output->writeln("<error>Please select start time argument OR use the '--" . START_TIME_OPT . "' option.</error>");
+            return Command::FAILURE;
+        }
+
+        if ($start_time === NULL) {
+            $start_time = $start_time_opt;
+        }
+
+        if($end_time_opt !== NULL) {
+            $end_time = $end_time_opt;
+        }
+
         if(!($start_time_obj = $this->isDateFormatCorrect($start_time, $output)))
         {
-            $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            $output->writeln("<error>Incorrect format for start time, it should in ISO date or a relative time. Example - 2010-01-28T15:00:00</error>");
             return Command::FAILURE;
         }
         $start_time=$start_time_obj->format(ISO_DATE_FORMAT);
-
-        $end_time = $input->getArgument('end_time');
-         if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
-         {
-            $output->writeln("Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00");
-            return Command::FAILURE;
-         }     
-         $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
-
-         if (!($end_time_obj->getTimestamp() > $start_time_obj->getTimestamp())) {
-            $output->writeln("End date and time needs to greater than the start date and time");
+        if($start_time_obj->getTimestamp() > time()) {
+            $output->writeln("<error>Start date and time needs to be before current time</error>");
+            $output->writeln("<error>Start Time: " . $start_time_obj->format(ISO_DATE_FORMAT) . "</error>");
             return Command::FAILURE; 
          }
 
+        if($end_time === NULL) {
+            $end_time_obj = DateTime::createFromFormat(ISO_DATE_FORMAT, date(ISO_DATE_FORMAT));
+            $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
+        } else {
+            if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
+            {
+                $output->writeln("<error>Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00</error>");
+                return Command::FAILURE;
+            }     
+            $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
+
+            if($end_time_obj->getTimestamp() > time()) {
+                $output->writeln("<error>End date and time needs to be before current time</error>");
+                $output->writeln("<error>End Time: " . $end_time_obj->format(ISO_DATE_FORMAT) . "</error>");
+                return Command::FAILURE; 
+             }
+    
+            if ($end_time_obj->getTimestamp() < $start_time_obj->getTimestamp()) {
+                $output->writeln("<error>End date and time needs to be greater than the start date and time</error>");
+                $output->writeln("<error>Start Time: " . $start_time_obj->format(ISO_DATE_FORMAT) . "</error>");
+                $output->writeln("<error>End Time:   " . $end_time_obj->format(ISO_DATE_FORMAT) . "</error>");
+                return Command::FAILURE; 
+            }
+        }
+
+        // echo "Start time obj: " . var_export($start_time_obj,true) . PHP_EOL;
+        // echo "End time obj: " . var_export($end_time_obj,true) . PHP_EOL;
+         
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
         if (!$fsObject->exists($query_file)) {
-            $output->writeln("Sorry - the query file does not exist!\nPlease provide the path to your query file.");
+            $output->writeln("<error>Sorry - the query file does not exist!\nPlease provide the path to your query file.</error>");
             return Command::FAILURE;
         }
         
@@ -83,15 +154,19 @@ class RequestQueryCommand extends Command
             return Command::FAILURE;
         }
         
-        $output->writeln('Making request to Sumologic Jobs for Query :' . PHP_EOL);
-        $output->writeln($query. PHP_EOL);
-
-        
+        $prependBy = str_repeat(' ', 4);    // Add 4 spaces in front of our text
+        $output->writeln('<info>Making request to Sumologic Jobs for Query :</info>');
+        $output->writeln('<info>' . $prependBy. 'Start Time :' . $start_time_obj->format(ISO_DATE_FORMAT) . '</info>');
+        $output->writeln('<info>' . $prependBy. 'End Time   :' . $end_time_obj->format(ISO_DATE_FORMAT) . '</info>');
+        $output->writeln("");
+        $output_query = $query;
+        $output_query = str_replace("\n","\n" . $prependBy,$output_query);
+        $output->writeln('<info>' . $prependBy .$output_query. '<info>');
+        $output->writeln("");
 
         // Clean up formatting so as to pass this properly to API end
         $query = str_replace('"','\"',$query);
         $query = str_replace("\n", '', $query);
-
 
         /** ToDo validate $query */            
         $json_query = '{"query" :"'. $query . '",' . 
@@ -109,24 +184,24 @@ class RequestQueryCommand extends Command
                 $job_id = $this->getQueryJobID($response['body']->link->href);
                 break;
                 case 400:
-                    $output->writeln("Oh Oh! Bad request - check the query format.");
-                    $output->writeln("Status Code: " . $response['status_code']);
-                    $output->writeln($response['reason']);
+                    $output->writeln("<error>Oh Oh! Bad request - check the query format.</error>");
+                    $output->writeln("<error>Status Code: " . $response['status_code'] . "</error>");
+                    $output->writeln("<error>". $response['reason'] . "</error>");
                     return Command::FAILURE;
                     break;
                 default:
-                    $output->writeln("Unknown response from Sumologic API - Exiting");
-                    $output->writeln("Status Code: " . $response['status_code']);
-                    $output->writeln($response['reason']);
+                    $output->writeln("<error>Unknown response from Sumologic API - Exiting</error>");
+                    $output->writeln("<error>Status Code: " . $response['status_code'] . "</error>");
+                    $output->writeln("<error>" . $response['reason'] . "</error>");
                     return Command::FAILURE;
         }
 
         if($job_id === null) {
-            $output->writeln("Error retrieving Sumologic Job ID - Exiting");
+            $output->writeln("<error>Error retrieving Sumologic Job ID - Exiting</error>");
             return Command::FAILURE;
         }
 
-        $output->writeln("Success!\nQuery is running as JOB ID: " . $job_id);
+        $output->writeln("Success! Query is running as JOB ID: " . $job_id);
 
         $is_results_ready = false;
         $delay = 2; // Amount of seconds before making a new request
@@ -142,9 +217,9 @@ class RequestQueryCommand extends Command
                     }
                     break;
                 default:
-                    $output->writeln("Unknown response from Sumologic API - Exiting");
-                    $output->writeln('Status code: ' .$response['status_code']);
-                    $output->writeln($response['reason']);
+                    $output->writeln("<error>Unknown response from Sumologic API - Exiting</error>");
+                    $output->writeln('<error>Status code: ' .$response['status_code'] . '</error>');
+                    $output->writeln('<error>' . $response['reason'] . '</error>');
                     return Command::FAILURE;
             }
             if($is_results_ready) {
@@ -154,18 +229,18 @@ class RequestQueryCommand extends Command
         }
     
         if($result_count == -1) {
-            $output->writeln("Unknown failure for results - Exiting");            
+            $output->writeln("<error>Unknown failure for results - Exiting</error>");        
             return Command::FAILURE;
         } else if($result_count == 0) {
-            $output->writeln("Query returned no results :(");            
-            $output->writeln("You may need to check your timeframes or your query.");            
+            $output->writeln("<info>Query returned no results :(</info>");            
+            $output->writeln("<info>You may need to check your timeframes or your query.</info>");            
             return Command::SUCCESS;
         }
 
         $output->writeln('');
         $output->writeln("Query is ready!");
         $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion('There are ' . $result_count . ' records.' . ' Do you want to download these ?', false);
+        $question = new ConfirmationQuestion('<question>There are ' . $result_count . ' records.' . ' Do you want to download these ?</question>', false);
 
         if (!$helper->ask($input, $output, $question)) {
             $output->writeln("Ok! No results have been retrieved!");
@@ -174,25 +249,25 @@ class RequestQueryCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln("Grabbing results ...");
+        $output->writeln("<info>Grabbing results ...</info>");
         $save_to_path = null;
         $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000);
         $save_to_path = $result['file_path'];
         $is_polaris = $result['is_polaris'];
         if(empty($save_to_path)) {
-            $output->writeln("Error saving Results :(");
+            $output->writeln("<error>Error saving Results :(</error>");
 
             return Command::FAILURE;
         }
         $output->writeln('');
-        $output->writeln("Results saved to " . $save_to_path);
-        $output->writeln("Results are in json format.");
+        $output->writeln("<info>Results saved to " . $save_to_path . "</info>");
+        $output->writeln("<info>Results are in json format.</info>");
         $output->writeln('');
-        $output->writeln("To view the results you could use the following shell command:");
+        $output->writeln("<info>To view the results you could use the following shell command:</info>");
         if($is_polaris > 0) {
-            $output->writeln("cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less");
+            $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</comment>");
         } else {
-            $output->writeln("cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less");
+            $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less</comment>");
         }
         $output->writeln('');
 
@@ -271,8 +346,13 @@ class RequestQueryCommand extends Command
     // Returns DateTime object if success and FALSE in case of failure.
 
     function isDateFormatCorrect($check_time) {
+        $timestamp = strtotime($check_time);
+        if(!$timestamp) {
+            return false;
+        }
 
-        $check_time_obj=DateTime::createFromFormat(ISO_DATE_FORMAT, $check_time);
+        $timestamp_str = date(ISO_DATE_FORMAT, $timestamp);
+        $check_time_obj=DateTime::createFromFormat(ISO_DATE_FORMAT, $timestamp_str);
         if(!$check_time_obj)
         {
             return FALSE;
