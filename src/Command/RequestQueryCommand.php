@@ -10,8 +10,10 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use DateTime;
 
 use App\Controller\ApiController;
+define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
 
 class RequestQueryCommand extends Command
 {
@@ -40,13 +42,34 @@ class RequestQueryCommand extends Command
 
         //
         ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
-        ->addArgument('start_time', InputArgument::REQUIRED, 'The start time for the Query.')
-        ->addArgument('end_time', InputArgument::REQUIRED, 'The end time for the Query.')
+        ->addArgument('start_time', InputArgument::REQUIRED, 'The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
+        ->addArgument('end_time', InputArgument::REQUIRED, 'The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $start_time = $input->getArgument('start_time');
+        if(!($start_time_obj = $this->isDateFormatCorrect($start_time, $output)))
+        {
+            $output->writeln("Incorrect format for start time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            return Command::FAILURE;
+        }
+        $start_time=$start_time_obj->format(ISO_DATE_FORMAT);
+
+        $end_time = $input->getArgument('end_time');
+         if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
+         {
+            $output->writeln("Incorrect format for end time, it should in ISO date. Example - 2010-01-28T15:00:00");
+            return Command::FAILURE;
+         }     
+         $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
+
+         if (!($end_time_obj->getTimestamp() > $start_time_obj->getTimestamp())) {
+            $output->writeln("End date and time needs to greater than the start date and time");
+            return Command::FAILURE; 
+         }
+
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
         if (!$fsObject->exists($query_file)) {
@@ -63,8 +86,7 @@ class RequestQueryCommand extends Command
         $output->writeln('Making request to Sumologic Jobs for Query :' . PHP_EOL);
         $output->writeln($query. PHP_EOL);
 
-        $start_time = $input->getArgument('start_time');
-        $end_time = $input->getArgument('end_time');
+        
 
         // Clean up formatting so as to pass this properly to API end
         $query = str_replace('"','\"',$query);
@@ -243,5 +265,20 @@ class RequestQueryCommand extends Command
         $return_arr['is_polaris'] = $is_polaris;
 
         return $return_arr;
+    }
+
+    // Function to check time is in ISO date-time format. 
+    // Returns DateTime object if success and FALSE in case of failure.
+
+    function isDateFormatCorrect($check_time) {
+
+        $check_time_obj=DateTime::createFromFormat(ISO_DATE_FORMAT, $check_time);
+        if(!$check_time_obj)
+        {
+            return FALSE;
+
+        }
+        return $check_time_obj;
+
     }
 }

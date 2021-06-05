@@ -9,7 +9,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 // Include App specific classes
 use App\Controller\ApiController;
 use App\Command\RequestQueryCommand;
-use App\Controller\ConfigController;
+// use App\Controller\ConfigController;
 
 define("DEFAULT_CRED_FILE_PATH",getenv("HOME") . "/.sumologic-creds.yml");
 define("SUMOLOGIC_JOB_SEARCH_API","https://api.sumologic.com/api/v1/search/jobs");
