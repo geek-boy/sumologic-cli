@@ -134,9 +134,6 @@ class RequestQueryCommand extends Command
             }
         }
 
-        // echo "Start time obj: " . var_export($start_time_obj,true) . PHP_EOL;
-        // echo "End time obj: " . var_export($end_time_obj,true) . PHP_EOL;
-         
         $query_file = $input->getArgument('query_file_path');
         $fsObject = new Filesystem();
         if (!$fsObject->exists($query_file)) {
@@ -148,6 +145,36 @@ class RequestQueryCommand extends Command
         if(($query = file_get_contents($query_file)) === false) {
             $output->writeln("Unable to read query file :(");
             return Command::FAILURE;
+        }
+
+        // Check the query for Sumologic variable substitution denoted by '{{variable}}'
+        preg_match_all('/{{.+}}/', $query, $matches);
+        if($num_vars=count($matches[0])) {
+            $output->writeln('<info>Found ' . $num_vars . ' variables in query :</info>');
+            $prependBy = str_repeat(' ', 4);    // Add 4 spaces in front of our text
+            foreach($matches[0] as $var) {
+                $output->writeln('<info>' . $prependBy. '- ' . $var . '</info>');
+            }
+            $output->writeln("");
+            $output_query = $query;
+            $output_query = str_replace("\n","\n" . $prependBy,$output_query);
+            $output->writeln('<info>' . $prependBy. 'Query:</info>');
+            $output->writeln('<info>' . $prependBy .$output_query. '<info>');
+            $output->writeln("");
+
+            $helper = $this->getHelper('question');
+
+            // Loop through each variable and get value
+            //TODO: Is is possible to Validate value? 
+            $var_values=[];
+            foreach($matches[0] as $var) {
+                $question = new Question('<question>Enter value for ' . $var . ': </question>');
+                //TODO: Need to check for a NULL string
+                $var_values[$var] = $helper->ask($input, $output, $question);
+            }
+            foreach($var_values as $var => $value) {
+                $query = str_replace($var,$value,$query);
+            }
         }
         
         $prependBy = str_repeat(' ', 4);    // Add 4 spaces in front of our text
@@ -250,7 +277,7 @@ class RequestQueryCommand extends Command
         $save_to_path = null;
         $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000);
         $save_to_path = $result['file_path'];
-        $is_polaris = $result['is_polaris'];
+        $is_kubernetes = $result['is_kubernetes'];
         if(empty($save_to_path)) {
             $output->writeln("<error>Error saving Results :(</error>");
 
@@ -261,7 +288,7 @@ class RequestQueryCommand extends Command
         $output->writeln("<info>Results are in json format.</info>");
         $output->writeln('');
         $output->writeln("<info>To view the results you could use the following shell command:</info>");
-        if($is_polaris > 0) {
+        if($is_kubernetes > 0) {
             $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</comment>");
         } else {
             $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less</comment>");
@@ -286,7 +313,7 @@ class RequestQueryCommand extends Command
     function saveQueryResults(OutputInterface $output, String $job_id, int $total_records, int $start_offset, int $limit, String $path_to_save = null) {
 
         $return_arr=[];
-        $is_polaris=false;
+        $is_kubernetes=false;
 
         /** ToDo: Implement check of file size and records to retrieve */
         if (empty($path_to_save)) {
@@ -312,16 +339,16 @@ class RequestQueryCommand extends Command
             if (sizeof(array_filter($response['body']->messages, function($value) {
                 return $value->map->_collector === "Acquia Cloud Polaris";
             }))) {
-                $is_polaris = 1;
+                $is_kubernetes = 1;
             } else {
-                $is_polaris = 0;
+                $is_kubernetes = 0;
             }
 
             $upper = $record_count + (int) $fetch_limit;
             if($upper >= $total_records) {
                 $upper = $total_records;
             }
-            $output->writeln('Grabbed records ' . $record_count . ' to ' . $upper);
+            $output->writeln('<info>Grabbed records ' . $record_count . ' to ' . $upper . '</info>');
             $record_count += $fetch_limit;
             $offset += $fetch_limit;
             if($upper != $total_records) {
@@ -329,19 +356,18 @@ class RequestQueryCommand extends Command
                 if($upper + $fetch_limit > $total_records) {
                     $grab_count = $total_records - $upper;
                 }
-                $output->writeln('Grabbing ' . $grab_count . ' more ...');
+                $output->writeln('<info>Grabbing ' . $grab_count . ' more ...</info>');
             }
         }
 
         $return_arr['file_path'] = $path_to_save;
-        $return_arr['is_polaris'] = $is_polaris;
+        $return_arr['is_kubernetes'] = $is_kubernetes;
 
         return $return_arr;
     }
 
     // Function to check time is in ISO date-time format. 
     // Returns DateTime object if success and FALSE in case of failure.
-
     function isDateFormatCorrect($check_time) {
         $timestamp = strtotime($check_time);
         if(!$timestamp) {
