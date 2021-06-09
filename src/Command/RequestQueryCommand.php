@@ -199,15 +199,21 @@ class RequestQueryCommand extends Command
                     '"byReceiptTime": false' . 
                     '}';
 
+        
+
         $response = $this->apicontroller->createSearchJob($json_query);
 
+        // Status codes defined by sumologic API.
+        //https://help.sumologic.com/APIs/Search-Job-API/About-the-Search-Job-API#errors
+        
         $job_id=null;
         switch($response['status_code']) {
             case 202:
                 $job_id = $this->getQueryJobID($response['body']->link->href);
                 break;
                 case 400:
-                    $output->writeln("<error>Oh Oh! Bad request - check the query format.</error>");
+                    $output->writeln("<error>Oh Oh! Whoops sumologic did not like the query. Looks like you query syntax is incorrect.</error>");
+                    $output->writeln("<error>Check the query format !</error>");
                     $output->writeln("<error>Status Code: " . $response['status_code'] . "</error>");
                     $output->writeln("<error>". $response['reason'] . "</error>");
                     return Command::FAILURE;
@@ -244,6 +250,7 @@ class RequestQueryCommand extends Command
                     $output->writeln('<error>Status code: ' .$response['status_code'] . '</error>');
                     $output->writeln('<error>' . $response['reason'] . '</error>');
                     return Command::FAILURE;
+
             }
             if($is_results_ready) {
                 break;
