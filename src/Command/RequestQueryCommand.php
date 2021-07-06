@@ -19,6 +19,12 @@ define("START_TIME_ARG", "start_time");
 define("END_TIME_ARG", "end_time");
 define("START_TIME_OPT", "start");
 define("END_TIME_OPT", "end");
+define("FORMAT_OPT", "format");
+define('FORMAT_OPTIONS', array(
+    'json' => array('ext' => 'json', 'delimiter' => ''),
+    'csv' => array('ext' => 'csv', 'delimiter' => ","),
+    'tab'=> array('ext' => 'tab' , 'delimiter' => "\t")
+));
 
 class RequestQueryCommand extends Command
 {
@@ -58,6 +64,30 @@ class RequestQueryCommand extends Command
             InputOption::VALUE_REQUIRED,
             'End time as relative time. Examples are: "-3 hours" "-1 week" "-7 days" "2021-06-05T11:09:01"'
         )
+        ->addOption(
+            FORMAT_OPT,
+            null,
+            InputOption::VALUE_REQUIRED,
+            'Format of downloaded results. This can be "json", "csv", "tab". The default format is "json".'
+        )
+        ->addOption(
+            FORMAT_OPTIONS['json']['ext'],
+            null,
+            InputOption::VALUE_NONE,
+            'Download results in "' . FORMAT_OPTIONS['json']['ext'] . '" format.'
+        )
+        ->addOption(
+            FORMAT_OPTIONS['csv']['ext'],
+            null,
+            InputOption::VALUE_NONE,
+            'Download results in "' . FORMAT_OPTIONS['csv']['ext'] . '" format.'
+        )
+        ->addOption(
+            FORMAT_OPTIONS['tab']['ext'],
+            null,
+            InputOption::VALUE_NONE,
+            'Download results in "' . FORMAT_OPTIONS['tab']['ext'] . '" format.'
+        )
         ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
         ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
         ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
@@ -66,6 +96,8 @@ class RequestQueryCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $output_format = 'json';
+
         $start_time_opt = $input->getOption(START_TIME_OPT);
 
         $end_time_opt = $input->getOption(END_TIME_OPT);
@@ -73,6 +105,32 @@ class RequestQueryCommand extends Command
         $start_time = $input->getArgument(START_TIME_ARG);
 
         $end_time = $input->getArgument(END_TIME_ARG);
+
+        $format_option = $input->getOption(FORMAT_OPT);
+
+        $format_options = [];
+        $opt_count=0;
+        foreach(FORMAT_OPTIONS as $option_type => $option_vals) {
+            $format_options[$option_type] = $input->getOption($option_type);
+            if($format_options[$option_type] != null) {
+                $output_format = $option_type;
+                $opt_count++;
+            }
+            if ($opt_count > 1) {
+                $output->writeln("<error>Please provide only one format option.</error>");
+                return Command::FAILURE;
+            }
+        }
+
+        if($opt_count == 1 && $format_option != null) {
+            $output->writeln("<error>Please provide only one format option.</error>");
+            return Command::FAILURE;
+        } else if($format_option != null) {
+            $output_format = $format_option;
+        }
+
+        $output->writeln("<info>format option - $output_format </info>");
+
 
         // Check Arguments and Options
         if ($start_time_opt === NULL && $start_time === NULL) {
@@ -329,14 +387,16 @@ class RequestQueryCommand extends Command
         $output->writeln('');
         $output->writeln("<bg=yellow;options=bold>Grabbing results ...</>");
         $save_to_path = null;
-        $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000);
-        $save_to_path = $result['file_path'];
-        $is_kubernetes = $result['is_kubernetes'];
-        if(empty($save_to_path)) {
+        $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000,$output_format);
+        if(empty($result)) {
             $output->writeln("<error>Error saving Results :(</error>");
 
             return Command::FAILURE;
         }
+        
+        $save_to_path = $result['file_path'];
+        $is_kubernetes = $result['is_kubernetes'];
+
         $output->writeln('');
         $output->writeln("<fg=white;bg=blue;options=bold>Results saved to " . $save_to_path . "</>");
         $output->writeln("<info>Results are in json format.</info>");
@@ -364,7 +424,7 @@ class RequestQueryCommand extends Command
         return null;
     }
 
-    function saveQueryResults(OutputInterface $output, String $job_id, int $total_records, int $start_offset, int $limit, String $path_to_save = null) {
+    function saveQueryResults(OutputInterface $output, String $job_id, int $total_records, int $start_offset, int $limit, String $file_format = 'json', String $path_to_save = null) {
 
         $return_arr=[];
         $is_kubernetes=false;
@@ -372,7 +432,7 @@ class RequestQueryCommand extends Command
         /** ToDo: Implement check of file size and records to retrieve */
         if (empty($path_to_save)) {
             $today = date("Y-m-d-His");         // 2001-03-10-171618 
-            $path_to_save = DEFAULT_RESULTS_DIR_PATH . "/sumologic_results-" . $today . ".json";
+            $path_to_save = DEFAULT_RESULTS_DIR_PATH . "/sumologic_results-" . $today . "." . $file_format;
         }
 
         // Grab records in batches to ensure no memory exhaustion
@@ -384,10 +444,29 @@ class RequestQueryCommand extends Command
         if ($fetch_limit > $max_limit) {
             $fetch_limit = $max_limit;
         }
+        
+        $fp = fopen($path_to_save, 'w');
+        if(!$fp) return null;
+    
+
         while($record_count <= $total_records) {
             $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit);
-            if(!file_put_contents($path_to_save, json_encode($response['body']->messages,JSON_PRETTY_PRINT), FILE_APPEND)) {
-                return null;
+            if($file_format == 'json') {
+                if(!file_put_contents($path_to_save, json_encode($response['body']->messages,JSON_PRETTY_PRINT), FILE_APPEND)) {
+                    return null;
+                }
+            } else {
+                $response_arr=json_decode(json_encode($response['body']->messages), true);
+
+                // Loop through each item and add to file
+                foreach($response_arr as $item) {
+                    //foreach element in $arr
+                    // $row=implode(FORMAT_OPTIONS[$file_format]['delimiter'], $item['map']);
+                    unset($item['map']['_raw']);
+                    if(!fputcsv($fp, $item['map'],FORMAT_OPTIONS[$file_format]['delimiter'])) {
+                        return null;
+                    }
+                }
             }
 
             if (sizeof(array_filter($response['body']->messages, function($value) {
@@ -416,6 +495,8 @@ class RequestQueryCommand extends Command
 
         $return_arr['file_path'] = $path_to_save;
         $return_arr['is_kubernetes'] = $is_kubernetes;
+
+        fclose($fp);
 
         return $return_arr;
     }
