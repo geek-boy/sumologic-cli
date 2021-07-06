@@ -11,6 +11,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Helper\ProgressBar;
 use DateTime;
 
 use App\Controller\ApiController;
@@ -129,7 +130,7 @@ class RequestQueryCommand extends Command
             $output_format = $format_option;
         }
 
-        $output->writeln("<info>format option - $output_format </info>");
+        // $output->writeln("<info>format option - $output_format </info>");
 
 
         // Check Arguments and Options
@@ -375,7 +376,10 @@ class RequestQueryCommand extends Command
         $output->writeln('');
         $output->writeln("Query is ready!");
         $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion('<question>There are ' . $result_count . ' records.' . ' Do you want to download these ?</question>', false);
+        //Add the calculation for messages here. 
+        $estimated_log_file_bytes = ($response['body']->messageCount)*500;
+
+        $question = new ConfirmationQuestion('<question>There are ' . $result_count . ' messages. Do you want to download this log file ?</question>', false);
 
         if (!$helper->ask($input, $output, $question)) {
             $output->writeln('');
@@ -399,7 +403,7 @@ class RequestQueryCommand extends Command
 
         $output->writeln('');
         $output->writeln("<fg=white;bg=blue;options=bold>Results saved to " . $save_to_path . "</>");
-        $output->writeln("<info>Results are in json format.</info>");
+        $output->writeln("<info>Results are in " . $output_format . " format.</info>");
         $output->writeln('');
         $output->writeln("<info>To view the results you could use the following shell command:</info>");
         if($is_kubernetes > 0) {
@@ -428,6 +432,8 @@ class RequestQueryCommand extends Command
 
         $return_arr=[];
         $is_kubernetes=false;
+        $file_size_increment = 200;
+        $log_size_upper_limit = $file_size_increment*1024*1024; // defined in bytes
 
         /** ToDo: Implement check of file size and records to retrieve */
         if (empty($path_to_save)) {
@@ -448,8 +454,27 @@ class RequestQueryCommand extends Command
         $fp = fopen($path_to_save, 'w');
         if(!$fp) return null;
     
+        $section1 = $output->section();
+        $section2 = $output->section();
+
+        ProgressBar::setFormatDefinition('record_progress', '%message%');
+        ProgressBar::setFormatDefinition('file_size_progress', '%message%');
+        $progressBar1 = new ProgressBar($section1);
+        $progressBar1->setFormat('record_progress');
+        $progressBar1->setMessage("Starting to gather records");
+        $progressBar1->start($total_records);
+        $progressBar2 = new ProgressBar($section2);
 
         while($record_count <= $total_records) {
+            $upper = $record_count + (int) $fetch_limit;
+            if($upper >= $total_records) {
+                $upper = $total_records;
+            }
+            $progressBar1->clear();
+            $progressBar1->setMessage("Getting records..." . $record_count . " to " . $upper);
+            $progressBar1->advance($fetch_limit);
+            $progressBar1->display();
+            
             $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit);
             if($file_format == 'json') {
                 if(!file_put_contents($path_to_save, json_encode($response['body']->messages,JSON_PRETTY_PRINT), FILE_APPEND)) {
@@ -477,11 +502,6 @@ class RequestQueryCommand extends Command
                 $is_kubernetes = 0;
             }
 
-            $upper = $record_count + (int) $fetch_limit;
-            if($upper >= $total_records) {
-                $upper = $total_records;
-            }
-            $output->writeln('<info>Grabbed records ' . $record_count . ' to ' . $upper . '</info>');
             $record_count += $fetch_limit;
             $offset += $fetch_limit;
             if($upper != $total_records) {
@@ -489,15 +509,40 @@ class RequestQueryCommand extends Command
                 if($upper + $fetch_limit > $total_records) {
                     $grab_count = $total_records - $upper;
                 }
-                $output->writeln('<info>Grabbing ' . $grab_count . ' more ...</info>');
             }
-        }
+            $return_arr['file_path'] = $path_to_save;
+            $return_arr['is_kubernetes'] = $is_kubernetes;
 
-        $return_arr['file_path'] = $path_to_save;
-        $return_arr['is_kubernetes'] = $is_kubernetes;
+            // Calculating the log file size. 
+
+            $log_file_size = filesize($path_to_save);
+            $log_file_size = $this->calculate_log_file_size($log_file_size);
+
+            $progressBar2->setFormat('file_size_progress');
+            $progressBar2->clear();
+            $progressBar2->setMessage("File size is " . $log_file_size);
+            $progressBar2->display();
+
+            $helper = $this->getHelper('question');
+            if ($log_file_size >= $log_size_upper_limit) {
+              $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
+              $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*1024*1024); // multiples of bytes
+              if (!$helper->ask($input, $output, $question)) {
+                $progressBar1->clear();
+                $progressBar1->finish();
+                $progressBar1->display();
+                $progressBar2->finish();
+                return $return_arr;
+              }
+            } 
+        }
 
         fclose($fp);
 
+        $progressBar1->clear();
+        $progressBar1->finish();
+        $progressBar1->display();
+        $progressBar2->finish();
         return $return_arr;
     }
 
@@ -518,5 +563,36 @@ class RequestQueryCommand extends Command
         }
         return $check_time_obj;
 
+    }
+
+    //Calculates log file size and returns the file size in KB, MB or GB.
+    function calculate_log_file_size($bytes) {
+
+      if ($bytes >= 1073741824)
+        {
+          $bytes = number_format($bytes / 1073741824, 2) . ' GB';
+        }
+        elseif ($bytes >= 1048576)
+        {
+          $bytes = number_format($bytes / 1048576, 2) . ' MB';
+        }
+        elseif ($bytes >= 1024)
+        {
+          $bytes = number_format($bytes / 1024, 2) . ' KB';
+        }
+        elseif ($bytes > 1)
+        {
+          $bytes = $bytes . ' bytes';
+        }
+        elseif ($bytes == 1)
+        {
+          $bytes = $bytes . ' byte';
+        }
+        else
+        {
+          $bytes = '0 bytes';
+        }
+
+      return $bytes;
     }
 }
