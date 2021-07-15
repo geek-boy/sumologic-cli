@@ -67,6 +67,9 @@ class RequestQueryCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->apicontroller->setoutput($output);
+        
+
         $start_time_opt = $input->getOption(START_TIME_OPT);
 
         $end_time_opt = $input->getOption(END_TIME_OPT);
@@ -284,6 +287,7 @@ class RequestQueryCommand extends Command
         $delay = 2; // Amount of seconds before making a new request
         $result_count = -1; // Initialise to -1 as '0' is a valid result
         while(!$is_results_ready) {
+            // progress bar here
             $response = $this->apicontroller->getSearchJobStatus($job_id);
 
             switch($response['status_code']) {
