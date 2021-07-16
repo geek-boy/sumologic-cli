@@ -49,17 +49,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $data = null,
         OutputInterface $output=null    // Output progress if not null
     ) {
-
-        // echo "--- makeApiRequest ---" . PHP_EOL;
-        // echo "makeApiRequest method: ";
-        // var_dump($method);
-        // echo "makeApiRequest api_end_point: ";
-        // var_dump($api_end_point);
-        // echo "makeApiRequest data: ";
-        // var_dump($data);
-        // echo "makeApiRequest output: ";
-        // var_dump($output);
-
         $path = (empty($api_end_point)) ? '' : '/' . $api_end_point; 
         $full_uri = SUMOLOGIC_JOB_SEARCH_API . $path;
         $this->output = $output;
@@ -67,7 +56,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         if(!empty($this->output)) {
             $this->downloadedBytesProgressBar = new ProgressBar($this->output, 0);
         }
-
 
         // Send the request.
         $response = null;
@@ -78,16 +66,9 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $uploadedBytes = 0;
 
         if($data !== null) {
-            // echo "makeApiRequest data != null" . PHP_EOL;
             $options = ['body' => $data];
             $response = $this->httpclient->request($method,$full_uri,$options);
         } else {
-            // echo "makeApiRequest data == null" . PHP_EOL;
-
-            // echo "output: ";
-            // var_dump($output);
-
-
             if (!empty($this->output)) {   
                 $this->downloadedBytesProgressBar->setFormat('downloaded_bytes');
                 $this->downloadedBytesProgressBar->start();
@@ -101,10 +82,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                     $uploadTotal,
                     $uploadedBytes
                 ) {
-                    // echo "output: ";
-                    // var_dump($this->output);
-
-
                     if (!empty($this->output)) {
                         $timezone = date_default_timezone_get();
                         $date = date('Y-m-d h:i:s a', time());
