@@ -41,19 +41,21 @@ class ApiController extends AbstractController /*extends SymfonyController*/
             ]
          );
         $this->jar = new \GuzzleHttp\Cookie\CookieJar;
-        
     }
 
-    public function makeApiRequest(String $method, String $api_end_point = '', $data = null) {
-
-        //$this->downloadedBytesProgressBar = NULL;
-        assert_options(ASSERT_CALLBACK, 'progress_assert_handler');
-        assert_options(ASSERT_BAIL, true);
-
-        assert($this->downloadedBytesProgressBar !== NULL);
-
+    public function makeApiRequest(
+        String $method, 
+        String $api_end_point = '', 
+        $data = null,
+        OutputInterface $output=null    // Output progress if not null
+    ) {
         $path = (empty($api_end_point)) ? '' : '/' . $api_end_point; 
         $full_uri = SUMOLOGIC_JOB_SEARCH_API . $path;
+        $this->output = $output;
+
+        if(!empty($this->output)) {
+            $this->downloadedBytesProgressBar = new ProgressBar($this->output, 0);
+        }
 
         // Send the request.
         $response = null;
@@ -66,14 +68,11 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         if($data !== null) {
             $options = ['body' => $data];
             $response = $this->httpclient->request($method,$full_uri,$options);
-        }
-         else {
-
-            // if ($this->setDownloadedBytesProgressBar != NULL) {
-                
+        } else {
+            if (!empty($this->output)) {   
                 $this->downloadedBytesProgressBar->setFormat('downloaded_bytes');
                 $this->downloadedBytesProgressBar->start();
-            // }
+            }
             
             $response = $this->httpclient->request($method,$full_uri,[
                 'headers' => ['Accept: application/json'],
@@ -83,23 +82,20 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                     $uploadTotal,
                     $uploadedBytes
                 ) {
-                    if ($this->output != NULL) {
+                    if (!empty($this->output)) {
                         $timezone = date_default_timezone_get();
                         $date = date('Y-m-d h:i:s a', time());
                         $this->downloadedBytesProgressBar->clear();
                         $this->downloadedBytesProgressBar->setMessage($date. ' ' . $timezone, 'date');
                         $this->downloadedBytesProgressBar->setMessage($downloadedBytes, 'downloadedBytes');
                         $this->downloadedBytesProgressBar->advance();
-                        $this->downloadedBytesProgressBar->display();
-                        
+                        $this->downloadedBytesProgressBar->display();          
                     }
-                    $this->downloadedBytesProgressBar->finish();
-                    
-
                 },
-                 
-                
-                ]);
+            ]);
+            if (!empty($this->output)) {
+                $this->downloadedBytesProgressBar->finish();
+            }
         }
 
         return ['status_code' => $response->getStatusCode(),
@@ -116,23 +112,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         return $this->makeApiRequest('GET',$jobid);
     }
 
-    public function getQueryResults(String $jobid,int $offset, int $limit) {
-        return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit);
-    }
-
-    public function setOutput(OutputInterface $output) {
-        $this->output = $output;
-        $this->downloadedBytesProgressBar = new ProgressBar($this->output, 0);
-    }
-
-    public function setDownloadedBytesProgressBar($progressBar) {
-        $this->downloadedBytesProgressBar = $progressBar;
-    }
-
-    public function progress_assert_handler($file, $line, $code, $desc = null)
-    {
-        echo "Assert failure";
-    }
-   
-    
+    public function getQueryResults(String $jobid,int $offset, int $limit,OutputInterface $output=null) {
+        return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$output);
+    } 
 }
