@@ -105,6 +105,7 @@ class RequestQueryCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output_format = 'json';
+        // $this->apicontroller->setoutput($output);
 
         $start_time_opt = $input->getOption(START_TIME_OPT);
 
@@ -352,6 +353,7 @@ class RequestQueryCommand extends Command
         $delay = 2; // Amount of seconds before making a new request
         $result_count = -1; // Initialise to -1 as '0' is a valid result
         while(!$is_results_ready) {
+            // progress bar here
             $response = $this->apicontroller->getSearchJobStatus($job_id);
 
             switch($response['status_code']) {
@@ -500,7 +502,7 @@ class RequestQueryCommand extends Command
             $progressBar1->advance($fetch_limit);
             $progressBar1->display();
             
-            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit);
+            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit,$output);
             if($file_format == 'json') {
                 if(!file_put_contents($path_to_save, json_encode($response['body']->$return_list,JSON_PRETTY_PRINT), FILE_APPEND)) {
                     return null;
