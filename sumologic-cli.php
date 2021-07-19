@@ -5,6 +5,7 @@ require __DIR__.'/vendor/autoload.php';
 use Symfony\Component\Console\Application;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 // Include App specific classes
 use App\Controller\ApiController;
@@ -14,6 +15,8 @@ use App\Command\RequestQueryCommand;
 define("DEFAULT_CRED_FILE_PATH",getenv("HOME") . "/.sumologic-creds.yml");
 define("SUMOLOGIC_JOB_SEARCH_API","https://api.sumologic.com/api/v1/search/jobs");
 define("DEFAULT_RESULTS_DIR_PATH",getenv("HOME"));
+ProgressBar::setFormatDefinition('record_progress', 'Getting records... %recordCount% to %upperLimit%');
+ProgressBar::setFormatDefinition('file_size_progress', 'File size is %logFileSize%');
 
 $fsObject = new Filesystem();
 

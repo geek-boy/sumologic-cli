@@ -38,8 +38,8 @@ services:
     App\Controller\ApiController:
         autowire: true
         arguments: 
-            $default_creds_path : '%app.default_creds_path%'
-            - $sumologic_api_end_point : '%app.sumologic_api_end_point%'
+            # $default_creds_path : '%app.default_creds_path%'
+            # - $sumologic_api_end_point : '%app.sumologic_api_end_point%'
 
     # App\Controller\ConfigController:
     #  arguments:

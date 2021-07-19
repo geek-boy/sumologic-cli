@@ -12,6 +12,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use DateTime;
 
 use App\Controller\ApiController;
@@ -401,7 +402,7 @@ class RequestQueryCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln("<bg=yellow;options=bold>Grabbing results ...</>");
+        $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
         $save_to_path = null;
         $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000,$output_format,$results_list);
         if(empty($result)) {
@@ -418,14 +419,16 @@ class RequestQueryCommand extends Command
         $output->writeln("<info>Results are in " . $output_format . " format.</info>");
         $output->writeln('');
         $output->writeln("<info>To view the results you could use the following shell command:</info>");
+        $outputStyle = new OutputFormatterStyle('magenta', 'black', ['bold', 'blink']);
+        $output->getFormatter()->setStyle('fire', $outputStyle);
         if($output_format == FORMAT_OPTIONS['json']['ext']) {
         if($is_kubernetes > 0) {
-            $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</comment>");
+            $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</fire>");
         } else {
-            $output->writeln("<comment>cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less</comment>");
+            $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less</fire>");
         }
         } else {
-            $output->writeln("<comment>cat  " . $save_to_path . " | less</comment>");
+            $output->writeln("<fire>cat  " . $save_to_path . " | less</fire>");
         }
         $output->writeln('');
 
@@ -483,8 +486,7 @@ class RequestQueryCommand extends Command
         $section1 = $output->section();
         $section2 = $output->section();
 
-        ProgressBar::setFormatDefinition('record_progress', '%message%');
-        ProgressBar::setFormatDefinition('file_size_progress', '%message%');
+        
         $progressBar1 = new ProgressBar($section1);
         $progressBar1->setFormat('record_progress');
         $progressBar1->setMessage("Starting to gather records");
@@ -498,7 +500,9 @@ class RequestQueryCommand extends Command
                 $upper = $total_records;
             }
             $progressBar1->clear();
-            $progressBar1->setMessage("Getting records..." . $record_count . " to " . $upper);
+            //$progressBar1->setMessage("Getting records..." . $record_count . " to " . $upper);
+            $progressBar1->setMessage($record_count, 'recordCount');
+            $progressBar1->setMessage($upper, 'upperLimit');
             $progressBar1->advance($fetch_limit);
             $progressBar1->display();
             
@@ -551,7 +555,8 @@ class RequestQueryCommand extends Command
 
             $progressBar2->setFormat('file_size_progress');
             $progressBar2->clear();
-            $progressBar2->setMessage("File size is " . $log_file_size);
+            //$progressBar2->setMessage("File size is ");
+            $progressBar2->setMessage($log_file_size, 'logFileSize');
             $progressBar2->display();
 
             $helper = $this->getHelper('question');
