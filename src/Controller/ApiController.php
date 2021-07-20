@@ -10,8 +10,6 @@ use GuzzleHttp\Cookie\CookieJarInterface;
 use GuzzleHttp\Psr7\Request as GuzzRequest;
 use Symfony\Component\Console\Helper\ProgressBar;
 
-
-
 class ApiController extends AbstractController /*extends SymfonyController*/
 {
     private $httpclient;
@@ -24,7 +22,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
 
         $this->output = NULL;
         $this->downloadedBytesProgressBar = NULL;
-        ProgressBar::setFormatDefinition('downloaded_bytes', '%date%: Downloading - Bytes downloaded %downloadedBytes%');
         
         $creds = Yaml::parseFile($default_creds_path);
 
@@ -70,7 +67,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
             $response = $this->httpclient->request($method,$full_uri,$options);
         } else {
             if (!empty($this->output)) {   
-                $this->downloadedBytesProgressBar->setFormat('downloaded_bytes');
+                $this->downloadedBytesProgressBar->setFormat('api_controller_downloaded_bytes');
                 $this->downloadedBytesProgressBar->start();
             }
             

@@ -15,19 +15,15 @@ use App\Command\RequestQueryCommand;
 define("DEFAULT_CRED_FILE_PATH",getenv("HOME") . "/.sumologic-creds.yml");
 define("SUMOLOGIC_JOB_SEARCH_API","https://api.sumologic.com/api/v1/search/jobs");
 define("DEFAULT_RESULTS_DIR_PATH",getenv("HOME"));
-ProgressBar::setFormatDefinition('record_progress', 'Getting records... %recordCount% to %upperLimit%');
-ProgressBar::setFormatDefinition('file_size_progress', 'File size is %logFileSize%');
+ProgressBar::setFormatDefinition('request_query_record_progress', 'Getting records... %recordCount% to %upperLimit%');
+ProgressBar::setFormatDefinition('request_query_file_size_progress', 'File size is %logFileSize%');
+ProgressBar::setFormatDefinition('api_controller_downloaded_bytes', '%date%: Downloading - Bytes downloaded %downloadedBytes%');
 
 $fsObject = new Filesystem();
 
 // $config = new ConfigController();
 // $config->getDefaultCredsPath();
 // $config->getDefaultCredsPath();
-// echo $config; 
-
-// echo $default_creds_path;
-// print_r($application);
-
 
 if (!$fsObject->exists(DEFAULT_CRED_FILE_PATH))
 {

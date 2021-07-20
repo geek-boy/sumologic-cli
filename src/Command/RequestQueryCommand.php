@@ -490,7 +490,7 @@ class RequestQueryCommand extends Command
         $section2 = $output->section();
 
         $progressBar1 = new ProgressBar($section1);
-        $progressBar1->setFormat('record_progress');
+        $progressBar1->setFormat('request_query_record_progress');
         $progressBar1->setMessage("Starting to gather records");
         $progressBar1->start($total_records);
         $progressBar2 = new ProgressBar($section2);
@@ -553,7 +553,7 @@ class RequestQueryCommand extends Command
             $log_file_size = filesize($path_to_save);
             $log_file_size = $this->calculate_log_file_size($log_file_size);
 
-            $progressBar2->setFormat('file_size_progress');
+            $progressBar2->setFormat('request_query_file_size_progress');
             $progressBar2->clear();
             $progressBar2->setMessage($log_file_size, 'logFileSize');
             $progressBar2->display();
