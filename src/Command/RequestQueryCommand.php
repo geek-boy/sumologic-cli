@@ -22,6 +22,7 @@ define("END_TIME_ARG", "end_time");
 define("START_TIME_OPT", "start");
 define("END_TIME_OPT", "end");
 define("FIELDS_OPT", "fields-only");
+define("QUERY_OPT", "search-query");
 define("FORMAT_OPT", "format");
 define('FORMAT_OPTIONS', array(
     'json' => array('ext' => 'json', 'delimiter' => ''),
@@ -48,11 +49,11 @@ class RequestQueryCommand extends Command
     {
       $this
         // the short description shown while running "php bin/console list"
-        ->setDescription('Create a Query.')
+        ->setDescription('Run a Query and save results locally.')
 
         // the full command description shown when running the command with
         // the "--help" option
-        ->setHelp('This command makes a request to the Sumologic Job Search API to create a query.')
+        ->setHelp('This command makes a request to the Sumologic Job Search API to run a Query and save results locally.')
 
         // Define Options
         ->addOption(
@@ -80,6 +81,12 @@ class RequestQueryCommand extends Command
             'Download results in "' . FORMAT_OPTIONS['tab']['ext'] . '" format.'
         )
         ->addOption(
+            QUERY_OPT,
+            null,
+            InputOption::VALUE_REQUIRED,
+            'Provide a simple Sumologic search query to run. For example \'--' . QUERY_OPT . '="namespace=agoorah.apache-access"\''
+        )
+        ->addOption(
             START_TIME_OPT,
             null,
             InputOption::VALUE_REQUIRED,
@@ -97,7 +104,7 @@ class RequestQueryCommand extends Command
             InputOption::VALUE_NONE,
             'Print out only list of fields for query - Optional'
         )
-        ->addArgument('query_file_path', InputArgument::REQUIRED, 'The path to the file containing the Sumologic query you wish to run.')
+        ->addArgument('query_file_path', InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '". QUERY_OPT. "' option.")
         ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
         ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
@@ -204,20 +211,28 @@ class RequestQueryCommand extends Command
             }
         }
 
+        $query = $input->getOption(QUERY_OPT);
         $query_file = $input->getArgument('query_file_path');
-        $fsObject = new Filesystem();
-        if (!$fsObject->exists($query_file)) {
-            $output->writeln("<error>Sorry - the query file does not exist!\nPlease provide the path to your query file.</error>");
-            return Command::FAILURE;
-        }
+        if (!empty($query)) {
+            if(!empty($query_file)) {
+                $output->writeln("<error>Please provide the path to your query file ('query_file_path') or use the '" . QUERY_OPT . "' option.</error>");
+                return Command::FAILURE;
+            }
+        } else {
+            $fsObject = new Filesystem();
+            if (!$fsObject->exists($query_file)) {
+                $output->writeln("<error>Sorry - No search query has been provided!\nPlease provide the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
+                return Command::FAILURE;
+            }
         
-        $query = null;
-        if(($query = file_get_contents($query_file)) === false) {
-            $output->writeln("Unable to read query file :(");
-            return Command::FAILURE;
+            if(($query = file_get_contents($query_file)) === false) {
+                $output->writeln("Unable to read query file :(");
+                return Command::FAILURE;
+            }
         }
 
-        // Check the query for Sumologic variable substitution denoted by '{{variable}}'
+
+        /** Check the query for Sumologic variable substitution denoted by '{{variable}}' */
         preg_match_all('/{{.+}}/', $query, $matches);
         if($num_vars=count($matches[0])) {
             $output->writeln('<info>Found ' . $num_vars . ' variables in query :</info>');
@@ -246,7 +261,6 @@ class RequestQueryCommand extends Command
                 $query = str_replace($var,$value,$query);
             }
         }
-
 
         /** OK we now can make an API request to get results */
         $prependBy = str_repeat(' ', 4);    // Add 4 spaces in front of our text
@@ -412,7 +426,6 @@ class RequestQueryCommand extends Command
             return Command::FAILURE;
         }
         
-
         /** Results have been saved - Let the user know! */
         $save_to_path = $result['file_path'];
         $is_kubernetes = $result['is_kubernetes'];
