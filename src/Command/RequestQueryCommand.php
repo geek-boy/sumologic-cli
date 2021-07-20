@@ -144,10 +144,7 @@ class RequestQueryCommand extends Command
             $output_format = $format_option;
         }
 
-        // $output->writeln("<info>format option - $output_format </info>");
-
-
-        // Check Arguments and Options
+        /** Check Arguments and Options */
         if ($start_time_opt === NULL && $start_time === NULL) {
             if($end_time_opt !== NULL) {
                 $output->writeln("<error>Please provide a start time option ('--" . START_TIME_OPT . "') with the '--end' option.</error>");
@@ -249,7 +246,9 @@ class RequestQueryCommand extends Command
                 $query = str_replace($var,$value,$query);
             }
         }
-        
+
+
+        /** OK we now can make an API request to get results */
         $prependBy = str_repeat(' ', 4);    // Add 4 spaces in front of our text
         $output->writeln('<info>Making request to Sumologic Jobs for Query :</info>');
         $output->writeln('<info>' . $prependBy. 'Start Time :' . $start_time_obj->format(ISO_DATE_FORMAT) . '</info>');
@@ -350,6 +349,7 @@ class RequestQueryCommand extends Command
 
         $output->writeln("Success! Query is running as JOB ID: " . $job_id);
 
+        /** We have a job running - now wait until results are gathered */
         $is_results_ready = false;
         $delay = 2; // Amount of seconds before making a new request
         $result_count = -1; // Initialise to -1 as '0' is a valid result
@@ -401,6 +401,7 @@ class RequestQueryCommand extends Command
             return Command::SUCCESS;
         }
 
+        /** User wants to download results - let's get them and save them locally. */
         $output->writeln('');
         $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
         $save_to_path = null;
@@ -411,6 +412,8 @@ class RequestQueryCommand extends Command
             return Command::FAILURE;
         }
         
+
+        /** Results have been saved - Let the user know! */
         $save_to_path = $result['file_path'];
         $is_kubernetes = $result['is_kubernetes'];
 
@@ -486,21 +489,19 @@ class RequestQueryCommand extends Command
         $section1 = $output->section();
         $section2 = $output->section();
 
-        
         $progressBar1 = new ProgressBar($section1);
         $progressBar1->setFormat('record_progress');
         $progressBar1->setMessage("Starting to gather records");
         $progressBar1->start($total_records);
         $progressBar2 = new ProgressBar($section2);
 
-        // If $return_list is 'fields then we only need to grab the first set of these
+        // If $return_list is 'fields' then we only need to grab the first set of these
         while($record_count <= $total_records) {
             $upper = $record_count + (int) $fetch_limit;
             if($upper >= $total_records) {
                 $upper = $total_records;
             }
             $progressBar1->clear();
-            //$progressBar1->setMessage("Getting records..." . $record_count . " to " . $upper);
             $progressBar1->setMessage($record_count, 'recordCount');
             $progressBar1->setMessage($upper, 'upperLimit');
             $progressBar1->advance($fetch_limit);
@@ -549,13 +550,11 @@ class RequestQueryCommand extends Command
             $return_arr['is_kubernetes'] = $is_kubernetes;
 
             // Calculating the log file size. 
-
             $log_file_size = filesize($path_to_save);
             $log_file_size = $this->calculate_log_file_size($log_file_size);
 
             $progressBar2->setFormat('file_size_progress');
             $progressBar2->clear();
-            //$progressBar2->setMessage("File size is ");
             $progressBar2->setMessage($log_file_size, 'logFileSize');
             $progressBar2->display();
 
@@ -572,7 +571,7 @@ class RequestQueryCommand extends Command
               }
             }
 
-            // If we are only getting fields then our job here is done.
+            // If we are only getting 'fields' then our job here is done.
             if($return_list == 'fields') {
                 break;
             }
@@ -587,8 +586,9 @@ class RequestQueryCommand extends Command
         return $return_arr;
     }
 
-    // Function to check time is in ISO date-time format. 
-    // Returns DateTime object if success and FALSE in case of failure.
+    /** Function to check time is in ISO date-time format. 
+     ** Returns DateTime object if success and FALSE in case of failure.
+     */
     function isDateFormatCorrect($check_time) {
         $timestamp = strtotime($check_time);
         if(!$timestamp) {
@@ -606,7 +606,7 @@ class RequestQueryCommand extends Command
 
     }
 
-    //Calculates log file size and returns the file size in KB, MB or GB.
+    /** Calculates log file size and returns the file size in KB, MB or GB.*/
     function calculate_log_file_size($bytes) {
 
       if ($bytes >= 1073741824)
