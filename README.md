@@ -12,5 +12,5 @@ composer install
 Once this is done you should be good to use the application by using: 
 
 ```
-./sumologic-cl
+./sumologic-cli
 ```
