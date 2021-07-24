@@ -1,6 +1,7 @@
 <?php
 use Symfony\Component\Console\Helper\ProgressBar;
 
+define("APP_COMMAND_NAME", "sumologic-cli");
 define("DEFAULT_CRED_FILE_PATH",getenv("HOME") . "/.sumologic-creds.yml");
 define("SUMOLOGIC_JOB_SEARCH_API","https://api.sumologic.com/api/v1/search/jobs");
 define("DEFAULT_RESULTS_DIR_PATH",getenv("HOME"));
