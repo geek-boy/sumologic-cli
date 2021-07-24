@@ -9,8 +9,8 @@ After cloning the repository then install using composer from the code directory
 composer install
 ```
 
-Once this is done you should be good to use the application using: 
+Once this is done you should be good to use the application by using: 
 
 ```
-php sumologic-cli.php
+./sumologic-cli.php
 ```
