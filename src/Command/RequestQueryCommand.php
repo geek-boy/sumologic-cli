@@ -57,7 +57,9 @@ class RequestQueryCommand extends Command
         '  * ' . APP_COMMAND_NAME . ' /home/user/query_file.txt 2021-06-05T11:09:00 --end="-7days"' .PHP_EOL .
         '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
         '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --start="2hours" --end="1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --start="2hours"' .PHP_EOL 
+        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --start="2hours"' .PHP_EOL . 
+        PHP_EOL .
+        'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
         )
 
         // Define Options

@@ -25,3 +25,4 @@ Examples ways to run the command:
 * `sumologic-cli --query="namespace=agoorah.apache-access" --start="2hours" --end="1hour"`
 * `sumologic-cli --query="namespace=agoorah.apache-access" --start="2hours"`
 
+See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.
