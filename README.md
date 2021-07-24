@@ -9,14 +9,8 @@ After cloning the repository then install using composer from the code directory
 composer install
 ```
 
-Once this is done you need to add in a `.env` file in the code directory: 
+Once this is done you should be good to use the application by using: 
 
 ```
-touch .env
-```
-
-Once this is done you should be good to use the application using: 
-
-```
-php sumologic-cli.php
+./sumologic-cli.php
 ```
