@@ -1,6 +1,7 @@
 # Sumologic CLI
 
 Tool for running Sumologic queries from the command line.
+This application allows you to run queries against the Sumologic Search Job API (https://help.sumologic.com/APIs/Search-Job-API/About-the-Search-Job-API). It will download resuts locally to your home directory. 
 
 ## Installation
 After cloning the repository then install using composer from the code directory:
