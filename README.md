@@ -24,5 +24,6 @@ Examples ways to run the command:
 * `sumologic-cli --query="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00`
 * `sumologic-cli --query="namespace=agoorah.apache-access" --start="2hours" --end="1hour"`
 * `sumologic-cli --query="namespace=agoorah.apache-access" --start="2hours"`
+* `sumologic-cli --query="namespace=agoorah.apache-access" --fields-only --start="2hours" --end="1hour"`
 
 See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.
