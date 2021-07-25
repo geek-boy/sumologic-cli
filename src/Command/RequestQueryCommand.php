@@ -59,11 +59,14 @@ class RequestQueryCommand extends Command
         PHP_EOL .
         'Examples ways to run the command:' .PHP_EOL.
         '  * ' . APP_COMMAND_NAME . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' /home/user/query_file.txt 2021-06-05T11:09:00 --end="-7days"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --start="2hours" --end="1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --start="2hours"' .PHP_EOL . 
-        '  * ' . APP_COMMAND_NAME . ' --query="namespace=agoorah.apache-access" --fields-only --start="2hours" --end="1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' .FORMAT_OPT. '=tab' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' .PHP_EOL . 
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
         PHP_EOL .
         'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
         )
@@ -127,31 +130,67 @@ class RequestQueryCommand extends Command
     {
         $output_format = 'json';
 
-        $start_time_opt = $input->getOption(START_TIME_OPT);
-
-        $end_time_opt = $input->getOption(END_TIME_OPT);
+        $query_file = $input->getArgument(QUERY_FILE_PATH_ARG);
 
         $start_time = $input->getArgument(START_TIME_ARG);
 
         $end_time = $input->getArgument(END_TIME_ARG);
 
+        $start_time_opt = $input->getOption(START_TIME_OPT);
+
+        $end_time_opt = $input->getOption(END_TIME_OPT);
+
         $format_option = $input->getOption(FORMAT_OPT);
 
+        /** Check Arguments and Options 
+         ** Note that as all arguements are optional then we 
+         ** need to check that the value for an argument 
+         ** maybe assigned to a different argument
+        */
+
         // Check if we have no queries being requested or 
-        // if we have both ways of queries being made
         $query = $input->getOption(QUERY_OPT);
-        $query_file = $input->getArgument(QUERY_FILE_PATH_ARG);
-        if ((empty($query) && empty($query_file)) || (!empty($query) && !empty($query_file))) {
-                $output->writeln("<error>Please provide the path to your query file ('". QUERY_FILE_PATH_ARG ."') OR use the '" . QUERY_OPT . "' option." .PHP_EOL .
-                "Use the '--help' option to see more details.</error>");
-                return Command::FAILURE;
+        if ((empty($query) && empty($query_file))) {
+            $output->writeln("<error>Please provide the path to your search query file ('". QUERY_FILE_PATH_ARG ."') OR use the '" . QUERY_OPT . "' option." .PHP_EOL .
+            "Use the '--help' option to see more details.</error>");
+            return Command::FAILURE;
         }
+
+        // if the QUERY_OPT has not been given then check other arguments
+        if(empty($query)) {
+            if(empty($start_time_opt) && empty($end_time_opt)) {
+               // we expect three arguments to be given
+               if(empty($query_file) || empty($start_time) || empty($end_time)) {
+                $output->writeln("<error>Please provide all arguments OR use the '" . START_TIME_OPT . "' and '" . END_TIME_OPT . "' options." .PHP_EOL .
+                "Use the '--help' option to see more details and examples.</error>");
+                return Command::FAILURE;
+               } 
+            }
+        }
+
+        // if we have been given a QUERY_OPT then we need to check if 
+        // the other arguments are times or a query file
+        if (!empty($query)) {
+            $end_time = $start_time;
+            $start_time = $query_file;
+            $query_file = null;
+        //     if()
+        //     var_dump($query);
+        //     var_dump($query_file);
+
+        //     $output->writeln("<error>Please provide the path to your search query file ('". QUERY_FILE_PATH_ARG ."') OR use the '" . QUERY_OPT . "' option." .PHP_EOL .
+        //     "Use the '--help' option to see more details.</error>");
+        //     return Command::FAILURE;
+
+        }
+
 
         $results_list = 'messages';
         if ($input->getOption(FIELDS_OPT)) {
             $results_list='fields';
         }
 
+        // Check the requested output format options
         $format_options = [];
         $opt_count=0;
         foreach(FORMAT_OPTIONS as $option_type => $option_vals) {
@@ -173,10 +212,11 @@ class RequestQueryCommand extends Command
             $output_format = $format_option;
         }
 
-        /** Check Arguments and Options */
+
+
         if ($start_time_opt === NULL && $start_time === NULL) {
             if($end_time_opt !== NULL) {
-                $output->writeln("<error>Please provide a start time option ('--" . START_TIME_OPT . "') with the '--end' option.</error>");
+                $output->writeln("<error>Please provide a start time option ('--" . START_TIME_OPT . "') with the '--end' option or provide a start time in ISO Date format.</error>");
                 return Command::FAILURE;
             }
             $output->writeln("<error>Please provide a start time argument in ISO Date format or use the '--" . START_TIME_OPT . "' option.</error>");
@@ -211,6 +251,17 @@ class RequestQueryCommand extends Command
         if($end_time === NULL) {
             $end_time_obj = DateTime::createFromFormat(ISO_DATE_FORMAT, date(ISO_DATE_FORMAT));
             $end_time=$end_time_obj->format(ISO_DATE_FORMAT);
+            
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion('<question>No end time has been given.' . PHP_EOL .
+            'Do you want to use the time now (' . $end_time . ') ?</question>', false);
+
+            if (!$helper->ask($input, $output, $question)) {
+                $output->writeln('');
+                $output->writeln("<bg=white;fg=black>Ok! No query has been run!</>");
+    
+                return Command::SUCCESS;
+            }
         } else {
             if(!($end_time_obj = $this->isDateFormatCorrect($end_time, $output)))
             {
