@@ -6,6 +6,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 !defined("SUMOLOGIC_JOB_SEARCH_API") && define("SUMOLOGIC_JOB_SEARCH_API","https://api.sumologic.com/api/v1/search/jobs");
 !defined("DEFAULT_RESULTS_DIR_PATH") && define("DEFAULT_RESULTS_DIR_PATH",getenv("HOME"));
 
+//Define Progress Bar templates
 ProgressBar::setFormatDefinition('request_query_record_progress', 'Getting records... %recordCount% to %upperLimit%');
 ProgressBar::setFormatDefinition('request_query_file_size_progress', 'File size is %logFileSize%');
 ProgressBar::setFormatDefinition('api_controller_downloaded_bytes', '%date%: Downloading - Bytes downloaded %downloadedBytes%');

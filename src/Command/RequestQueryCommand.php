@@ -18,6 +18,7 @@ use DateTime;
 
 use App\Controller\ApiController;
 define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
+define("QUERY_FILE_PATH_ARG", "query_file_path");
 define("START_TIME_ARG", "start_time");
 define("END_TIME_ARG", "end_time");
 define("START_TIME_OPT", "start");
@@ -116,7 +117,7 @@ class RequestQueryCommand extends Command
             InputOption::VALUE_NONE,
             'Print out only list of fields for query - Optional'
         )
-        ->addArgument('query_file_path', InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '". QUERY_OPT. "' option.")
+        ->addArgument(QUERY_FILE_PATH_ARG, InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '". QUERY_OPT. "' option.")
         ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
         ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
       ;
@@ -135,6 +136,16 @@ class RequestQueryCommand extends Command
         $end_time = $input->getArgument(END_TIME_ARG);
 
         $format_option = $input->getOption(FORMAT_OPT);
+
+        // Check if we have no queries being requested or 
+        // if we have both ways of queries being made
+        $query = $input->getOption(QUERY_OPT);
+        $query_file = $input->getArgument(QUERY_FILE_PATH_ARG);
+        if ((empty($query) && empty($query_file)) || (!empty($query) && !empty($query_file))) {
+                $output->writeln("<error>Please provide the path to your query file ('". QUERY_FILE_PATH_ARG ."') OR use the '" . QUERY_OPT . "' option." .PHP_EOL .
+                "Use the '--help' option to see more details.</error>");
+                return Command::FAILURE;
+        }
 
         $results_list = 'messages';
         if ($input->getOption(FIELDS_OPT)) {
@@ -222,14 +233,8 @@ class RequestQueryCommand extends Command
             }
         }
 
-        $query = $input->getOption(QUERY_OPT);
-        $query_file = $input->getArgument('query_file_path');
-        if (!empty($query)) {
-            if(!empty($query_file)) {
-                $output->writeln("<error>Please provide the path to your query file ('query_file_path') or use the '" . QUERY_OPT . "' option.</error>");
-                return Command::FAILURE;
-            }
-        } else {
+        //Check if we are using the $query_file to get the query
+        if(!empty($query_file)) {
             $fsObject = new Filesystem();
             if (!$fsObject->exists($query_file)) {
                 $output->writeln("<error>Sorry - No search query has been provided!\nPlease provide the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
@@ -237,11 +242,10 @@ class RequestQueryCommand extends Command
             }
         
             if(($query = file_get_contents($query_file)) === false) {
-                $output->writeln("Unable to read query file :(");
+                $output->writeln("<error>Oh dear! I am unable to read query file :(</error>");
                 return Command::FAILURE;
             }
         }
-
 
         /** Check the query for Sumologic variable substitution denoted by '{{variable}}' */
         preg_match_all('/{{.+}}/', $query, $matches);
