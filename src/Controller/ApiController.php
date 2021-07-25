@@ -1,6 +1,8 @@
 <?php
 namespace App\Controller;
 
+include_once(__DIR__.'/../../config/constants.php');
+
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
