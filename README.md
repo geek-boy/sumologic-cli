@@ -32,4 +32,5 @@ Examples ways to run the command:
 * sumologic-cli --search-query="namespace=agoorah.apache-access" --fields-only --start="-2hours" --end="-1hour" --format=tab
 
 See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.
+
 See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.
