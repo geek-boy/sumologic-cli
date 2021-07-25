@@ -68,6 +68,7 @@ class RequestQueryCommand extends Command
         '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
         '  * ' . APP_COMMAND_NAME . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
         PHP_EOL .
+        'See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.' . PHP_EOL .
         'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
         )
 
@@ -174,14 +175,6 @@ class RequestQueryCommand extends Command
             $end_time = $start_time;
             $start_time = $query_file;
             $query_file = null;
-        //     if()
-        //     var_dump($query);
-        //     var_dump($query_file);
-
-        //     $output->writeln("<error>Please provide the path to your search query file ('". QUERY_FILE_PATH_ARG ."') OR use the '" . QUERY_OPT . "' option." .PHP_EOL .
-        //     "Use the '--help' option to see more details.</error>");
-        //     return Command::FAILURE;
-
         }
 
 
