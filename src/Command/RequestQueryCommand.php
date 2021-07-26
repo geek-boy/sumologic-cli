@@ -3,6 +3,8 @@ namespace App\Command;
 
 include_once(__DIR__.'/../../config/constants.php');
 
+use App\Controller\ApiController;
+
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +18,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use DateTime;
 
-use App\Controller\ApiController;
+
 define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
 define("QUERY_FILE_PATH_ARG", "query_file_path");
 define("START_TIME_ARG", "start_time");
@@ -35,11 +37,9 @@ define('FORMAT_OPTIONS', array(
 class RequestQueryCommand extends Command
 {
     private $apicontroller;
-    private $organization_select_uuids;
-    private $organization_select_names;
     
     // Default command name
-    protected static $defaultName = 'query';
+    protected static $defaultName = 'query:dorun';
 
     public function __construct(ApiController $apicontroller)
     {

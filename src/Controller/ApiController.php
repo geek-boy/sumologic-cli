@@ -19,17 +19,17 @@ class ApiController extends AbstractController /*extends SymfonyController*/
     private $output;
     private $downloadedBytesProgress;
 
-    public function __construct($default_creds_path, $sumologic_api_end_point)
+    public function __construct()
     {
 
         $this->output = NULL;
         $this->downloadedBytesProgressBar = NULL;
         
-        $creds = Yaml::parseFile($default_creds_path);
+        $creds = Yaml::parseFile(DEFAULT_CRED_FILE_PATH);
 
         $this->httpclient = new GuzzHttpClient(
             [
-                'base_uri' => $sumologic_api_end_point,
+                'base_uri' => SUMOLOGIC_JOB_SEARCH_API,
                 'cookies' => true,
                 'headers' => [
                     'Content-type' => 'application/json',

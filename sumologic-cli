@@ -9,8 +9,12 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 
 // Include App specific classes
-use App\Controller\ApiController;
+//use App\Controller\ApiController;
 use App\Command\RequestQueryCommand;
+// use App\Command\QuerySetResultsPathCommand;
+// use App\Command\QueryRunCommand;
+use App\Command\QueryReadmeCommand;
+
 
 $fsObject = new Filesystem();
 
@@ -31,9 +35,11 @@ if (!$fsObject->exists(DEFAULT_CRED_FILE_PATH))
 
 $application = new Application("Sumologic CLI");
 
-$apicontroller = new ApiController(DEFAULT_CRED_FILE_PATH,SUMOLOGIC_JOB_SEARCH_API);
+// $apicontroller = new ApiController(DEFAULT_CRED_FILE_PATH,SUMOLOGIC_JOB_SEARCH_API);
 // ... register commands
-$application->add(new RequestQueryCommand($apicontroller));
+// $application->add(new RequestQueryCommand($apicontroller));
 // $application->add(new RequestQueryCommand());
-
+// $application->add(new QueryRunCommand());
+// $application->add(new QuerySetResultsPathCommand());
+$application->add(new QueryReadmeCommand());
 $application->run();
