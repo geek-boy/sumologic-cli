@@ -9,4 +9,4 @@
 /vendor/
 ###< symfony/framework-bundle ###
 .DS_Store
-/nbproject/private/
+nbproject/*
