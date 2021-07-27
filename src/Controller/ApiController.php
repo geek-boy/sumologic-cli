@@ -12,13 +12,42 @@ use GuzzleHttp\Cookie\CookieJarInterface;
 use GuzzleHttp\Psr7\Request as GuzzRequest;
 use Symfony\Component\Console\Helper\ProgressBar;
 
-class ApiController extends AbstractController /*extends SymfonyController*/
+/**
+ * Api controller class ...
+ * 
+ * extends SymfonyController
+ */
+class ApiController extends AbstractController 
 {
+    /**
+     * 
+     * @var type
+     */
     private $httpclient;
+    
+    /**
+     * 
+     * @var type
+     */
     private $jar;
+    
+    /**
+     * 
+     * @var type
+     */
     private $output;
+    
+    /**
+     * @todo not used in scope
+     * @var type
+     */
     private $downloadedBytesProgress;
-
+     
+   /**
+    * 
+    * @param type $default_creds_path
+    * @param type $sumologic_api_end_point
+    */
     public function __construct($default_creds_path, $sumologic_api_end_point)
     {
 
@@ -42,6 +71,14 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $this->jar = new \GuzzleHttp\Cookie\CookieJar;
     }
 
+    /**
+     * 
+     * @param String $method
+     * @param String $api_end_point
+     * @param type $data
+     * @param OutputInterface $output
+     * @return type
+     */
     public function makeApiRequest(
         String $method, 
         String $api_end_point = '', 
@@ -59,6 +96,8 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         // Send the request.
         $response = null;
         $options = [];
+        
+        //@todo not used at this point in time
         $downloadTotal = 0;
         $downloadedBytes = 0;
         $uploadTotal = 0;
@@ -103,14 +142,32 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         ];
     }
 
+    /**
+     * 
+     * @param String $query
+     * @return type
+     */
     public function createSearchJob(String $query) {
         return $this->makeApiRequest('POST','',$query);
     }
 
+    /**
+     * 
+     * @param String $jobid
+     * @return type
+     */
     public function getSearchJobStatus(String $jobid) {
         return $this->makeApiRequest('GET',$jobid);
     }
 
+    /**
+     * 
+     * @param String $jobid
+     * @param int $offset
+     * @param int $limit
+     * @param OutputInterface $output
+     * @return type
+     */
     public function getQueryResults(String $jobid,int $offset, int $limit,OutputInterface $output=null) {
         return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$output);
     } 
