@@ -579,16 +579,18 @@ class RequestQueryCommand extends Command
             $progressBar1->advance($fetch_limit);
             $progressBar1->display();
             
-            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit,$output);
+            $return_results_as_array = ($file_format != 'json');
+            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit,$return_results_as_array,$output);
             if($file_format == 'json') {
                 if(!file_put_contents($path_to_save, json_encode($response['body']->$return_list,JSON_PRETTY_PRINT), FILE_APPEND)) {
                     return null;
                 }
             } else {
-                $response_arr=json_decode(json_encode($response['body']->$return_list), true);
+                // We get results back as an associative array
+                $response_arr=$response['body'][$return_list];
 
                 // Loop through each result item and add to file
-                foreach($response_arr as $result_item) {
+                foreach($response_arr as $key => $result_item) {
                     $item=$result_item;
                     if ($return_list != 'fields') {
                         unset($result_item['map']['_raw']);
@@ -601,12 +603,24 @@ class RequestQueryCommand extends Command
             }
 
             if($return_list == 'messages') {
-                if (sizeof(array_filter($response['body']->$return_list, function($value) {
-                    return $value->map->_collector === "Acquia Cloud Polaris";
-                }))) {
-                    $is_kubernetes = 1;
+                if(!$return_results_as_array) {
+                    // We have an object
+                    if (sizeof(array_filter($response['body']->$return_list, function($value) {
+                        return $value->map->_collector === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }
                 } else {
-                    $is_kubernetes = 0;
+                    // We have an array
+                    if (sizeof(array_filter($response['body'][$return_list], function($value) {
+                        return $value['map']['_collector'] === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }  
                 }
             }
 

@@ -46,6 +46,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         String $method, 
         String $api_end_point = '', 
         $data = null,
+        bool $return_results_as_array = false,
         OutputInterface $output=null    // Output progress if not null
     ) {
         $path = (empty($api_end_point)) ? '' : '/' . $api_end_point; 
@@ -98,7 +99,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         }
 
         return ['status_code' => $response->getStatusCode(),
-                'body' => json_decode($response->getBody()),
+                'body' => json_decode($response->getBody(),$return_results_as_array),
                 'reason' => $response->getReasonPhrase()
         ];
     }
@@ -111,7 +112,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         return $this->makeApiRequest('GET',$jobid);
     }
 
-    public function getQueryResults(String $jobid,int $offset, int $limit,OutputInterface $output=null) {
-        return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$output);
+    public function getQueryResults(String $jobid,int $offset, int $limit,bool $return_results_as_array, OutputInterface $output=null) {
+        return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
     } 
 }
