@@ -279,12 +279,13 @@ class RequestQueryCommand extends Command
 
         //Check if we are using the $query_file to get the query
         if(!empty($query_file)) {
-            $fsObject = new Filesystem();
-            if (!$fsObject->exists($query_file)) {
-                $output->writeln("<error>Sorry - No search query has been provided!\nPlease provide the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
+            if (!is_readable($query_file)) {
+                $output->writeln("<error>Sorry - The path to the search query file was not found or I cannot read it!\n" . 
+                "Please check the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
                 return Command::FAILURE;
             }
         
+            $fsObject = new Filesystem();
             if(($query = file_get_contents($query_file)) === false) {
                 $output->writeln("<error>Oh dear! I am unable to read query file :(</error>");
                 return Command::FAILURE;
