@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Command;
 
 include_once(__DIR__.'/../../config/constants.php');
@@ -32,14 +33,11 @@ define('FORMAT_OPTIONS', array(
     'tab'=> array('ext' => 'tab' , 'delimiter' => "\t")
 ));
 
-class RequestQueryCommand extends Command
+
+class QueryRunCommand extends Command
 {
-    private $apicontroller;
-    private $organization_select_uuids;
-    private $organization_select_names;
-    
-    // Default command name
     protected static $defaultName = 'query:run';
+    protected static $defaultDescription = 'Run a Query and save results locally in a file. Use the \'--help\' option to see more details.';
 
     public function __construct(ApiController $apicontroller)
     {
@@ -47,26 +45,24 @@ class RequestQueryCommand extends Command
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
-      $this
-        // the short description shown while running "php bin/console list"
-        ->setDescription('Run a Query and save results locally in a file. Use the \'--help\' option to see more details.')
-
+        $this
+            ->setDescription(self::$defaultDescription)
         // the full command description shown when running the command with
         // the "--help" option
         ->setHelp('This command makes a request to the Sumologic Job Search API to run a Query and save results locally.' .PHP_EOL .
         PHP_EOL .
         'Examples ways to run the command:' .PHP_EOL.
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' .FORMAT_OPT. '=tab' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' .PHP_EOL . 
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' .FORMAT_OPT. '=tab' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' .PHP_EOL . 
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
         PHP_EOL .
         'See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.' . PHP_EOL .
         'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
@@ -723,3 +719,4 @@ class RequestQueryCommand extends Command
       return $bytes;
     }
 }
+
