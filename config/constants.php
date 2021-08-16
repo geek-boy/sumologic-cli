@@ -7,6 +7,6 @@ use Symfony\Component\Console\Helper\ProgressBar;
 !defined("DEFAULT_RESULTS_DIR_PATH") && define("DEFAULT_RESULTS_DIR_PATH",getenv("HOME"));
 
 //Define Progress Bar templates
-ProgressBar::setFormatDefinition('request_query_record_progress', 'Getting records... %recordCount% to %upperLimit%');
+ProgressBar::setFormatDefinition('request_query_record_progress', 'Getting %recordType% results... %recordCount% to %upperLimit%');
 ProgressBar::setFormatDefinition('request_query_file_size_progress', 'File size is %logFileSize%');
 ProgressBar::setFormatDefinition('api_controller_downloaded_bytes', '%date%: Downloading - Bytes downloaded %downloadedBytes%');

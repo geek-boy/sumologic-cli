@@ -4,22 +4,21 @@ namespace App\Controller;
 include_once(__DIR__.'/../../config/constants.php');
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Yaml\Yaml;
 use GuzzleHttp\Client as GuzzHttpClient;
-use GuzzleHttp\Cookie\CookieJarInterface;
-use GuzzleHttp\Psr7\Request as GuzzRequest;
-use Symfony\Component\Console\Helper\ProgressBar;
+// use GuzzleHttp\Cookie\CookieJarInterface;
+// use GuzzleHttp\Psr7\Request as GuzzRequest;
 
 class ApiController extends AbstractController /*extends SymfonyController*/
 {
     private $httpclient;
-    private $jar;
+    // private $jar;
     private $output;
-    private $downloadedBytesProgress;
-
-    public function __construct($default_creds_path, $sumologic_api_end_point)
+    // private $downloadedBytesProgress;
+    
+    public function __construct(String $default_creds_path, String $sumologic_api_end_point)
     {
 
         $this->output = NULL;
@@ -30,7 +29,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $this->httpclient = new GuzzHttpClient(
             [
                 'base_uri' => $sumologic_api_end_point,
-                'cookies' => true,
+                'cookies' => false,
                 'headers' => [
                     'Content-type' => 'application/json',
                     'Accept' => 'application/json'
@@ -39,7 +38,7 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                 'http_errors' => false
             ]
          );
-        $this->jar = new \GuzzleHttp\Cookie\CookieJar;
+        // $this->jar = new \GuzzleHttp\Cookie\CookieJar;
     }
 
     public function makeApiRequest(
@@ -52,9 +51,15 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $path = (empty($api_end_point)) ? '' : '/' . $api_end_point; 
         $full_uri = SUMOLOGIC_JOB_SEARCH_API . $path;
         $this->output = $output;
+        // if(!empty($output)) {
+        //     $this->logger = new ConsoleLogger($output);
+        //     $this->logger->info('makeApiRequest full_uri: ' . $full_uri);
+        // }
 
         if(!empty($this->output)) {
             $this->downloadedBytesProgressBar = new ProgressBar($this->output, 0);
+            // $this->output->writeln(PHP_EOL."method: " . $method . PHP_EOL);
+            // $this->output->writeln(PHP_EOL."full_uri: " . $full_uri . PHP_EOL);
         }
 
         // Send the request.
@@ -72,6 +77,8 @@ class ApiController extends AbstractController /*extends SymfonyController*/
             if (!empty($this->output)) {   
                 $this->downloadedBytesProgressBar->setFormat('api_controller_downloaded_bytes');
                 $this->downloadedBytesProgressBar->start();
+                $this->downloadedBytesProgressBar->setMessage("full_uri: " . $full_uri);
+                $this->downloadedBytesProgressBar->display();          
             }
             
             $response = $this->httpclient->request($method,$full_uri,[
@@ -89,11 +96,13 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                         $this->downloadedBytesProgressBar->setMessage($date. ' ' . $timezone, 'date');
                         $this->downloadedBytesProgressBar->setMessage($downloadedBytes, 'downloadedBytes');
                         $this->downloadedBytesProgressBar->advance();
+                        // $this->downloadedBytesProgressBar->setMessage("full_uri: " . $full_uri);
                         $this->downloadedBytesProgressBar->display();          
                     }
                 },
             ]);
             if (!empty($this->output)) {
+
                 $this->downloadedBytesProgressBar->finish();
             }
         }
@@ -112,7 +121,37 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         return $this->makeApiRequest('GET',$jobid);
     }
 
-    public function getQueryResults(String $jobid,int $offset, int $limit,bool $return_results_as_array, OutputInterface $output=null) {
-        return $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
+
+    /**
+     * @param String $jobid // Job ID for the query
+     * @param int $offset   // Return records starting at this offset    
+     * @param int $limit    // The number of records starting at offset to return 
+     * @param bool $return_messages // Return results as 'messages' or as 'records'
+     * @param bool $return_results_as_array // Return results as an array rather than as an object
+     * @param OutputInterface $output=null  // OutputInterface instance to print out to console
+     * 
+     * @return type
+     */
+    public function getJobQueryResults(
+        String $jobid,
+        int $offset,
+        int $limit,
+        bool $return_messages=true,
+        bool $return_results_as_array=false,
+        OutputInterface $output=null
+    ) {
+        $ret=null;
+        if (!$return_messages) {
+            $ret = $this->makeApiRequest('GET',$jobid . '/records?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
+
+        } else {
+            $ret = $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
+        }
+        if(!empty($ret)) {
+            // $output->writeln("getJobQueryResults: " . var_export($ret,true));
+        }
+        
+        return $ret;
+
     } 
 }
