@@ -707,27 +707,42 @@ class QueryRunCommand extends Command
                     $results=$response['body'];
 
                     if($return_only_fields) {
-                        $fields = new \stdClass();
-                        $fields->fields = $response['body']->fields;
-                        $results = new \stdClass();
-                        $results->$result_type =  new \stdClass();
-                        $results->$result_type->fields = $fields->fields;
+                        $results = $response['body']->fields;
+                    } else {
+                        $results = $response['body']->$result_type;
+                        foreach ($results as $key => $item) {
+                            $results[$key] = $item->map;
+                        }
                     }
+
                     if(!file_put_contents($path_to_save, json_encode($results,JSON_PRETTY_PRINT), FILE_APPEND)) {
                         return null;
                     }
                 } else {
                     /** TODO Fix up using $return_only_fields for arrays */
                     // We get results back as an associative array
-                    $response_arr=$response['body'][$result_type];
+                    $response_arr=$response['body'];
+
+                    if($return_only_fields) {
+                        $fields = [];
+                        $fields['fields'] = $response['body']['fields'];
+                        $response_arr=$fields['fields'];
+                    } else {
+                        $response_arr=$response['body'][$result_type];
+                    }
+
+                    // Add a heading before the results
+                    if(!fwrite($fp,'******* ' .$result_type . ' *******' . PHP_EOL)) {
+                        return null;
+                    }
 
                     // Loop through each result item and add to file
                     foreach($response_arr as $key => $result_item) {
                         $item=$result_item;
-                        if ($return_only_fields) {
-                            unset($result_item['map']['_raw']);
-                            $item=$result_item['map'];
+                        if (!$return_only_fields) {
+                            $item = $result_item['map'];
                         }
+
                         if(!fputcsv($fp, $item,FORMAT_OPTIONS[$file_format]['delimiter'])) {
                             return null;
                         }
@@ -794,7 +809,6 @@ class QueryRunCommand extends Command
                     break;
                 }
             }
-            // sleep(30);
         }
 
         fclose($fp);
