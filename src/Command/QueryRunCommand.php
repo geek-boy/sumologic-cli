@@ -557,12 +557,12 @@ class QueryRunCommand extends Command
             if($is_kubernetes > 0) {
                 $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</fire>");
             } else {
-                $out_str = "cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less";
                 if(in_array('messages',$results_return_list)) {
-                    $out_str = "cat  " . $save_to_path . " | jq '.messages[].map' | less";
-                }
-                if(in_array('records',$results_return_list)) {
-                    $out_str = "cat  " . $save_to_path . " | jq '.records[].map' | less";
+                    $out_str = "cat  " . $save_to_path . " |  jq '.[] | {\"isodate\",\"_raw\"}' | less";
+                } else if(in_array('records',$results_return_list)) {
+                    $out_str = "cat  " . $save_to_path . " | jq '.[]' | less";
+                } else {
+                    $out_str = "cat  " . $save_to_path . " | jq '.[] | { \"isodate\", \"namespace\", \"msg\"}' | less";
                 }
                 $output->writeln("<fire>$out_str</fire>");
             }
