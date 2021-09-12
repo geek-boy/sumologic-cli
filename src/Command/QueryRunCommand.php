@@ -2,7 +2,7 @@
 
 namespace App\Command;
 
-include_once(__DIR__.'/../../config/constants.php');
+
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
