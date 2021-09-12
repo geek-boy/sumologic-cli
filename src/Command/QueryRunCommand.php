@@ -41,7 +41,6 @@ class QueryRunCommand extends Command
     protected static $defaultName = 'query:run';
     protected static $defaultDescription = 'Run a Query and save results locally in a file. Use the \'--help\' option to see more details.';
 
-    // public function __construct(App\Controller\ApiController $apicontroller)
     public function __construct(\App\Controller\ApiController $apicontroller)
     {
         $this->apicontroller = $apicontroller;
@@ -451,15 +450,6 @@ class QueryRunCommand extends Command
         $delay = 2; // Amount of seconds before making a new request
         $job_status = null;
 
-
-        // $results_count['messages'] = -1; // Initialise to -1 as '0' is a valid result
-        // $results_count['records'] = -1; // Initialise to -1 as '0' is a valid result
-        // $results_count['messages']['fields'] = -1 // Initialise to -1 as '0' is a valid result
-        // $results_count['records'] = -1 // Initialise to -1 as '0' is a valid result
-
-
-        // $result_message_count = -1; // Initialise to -1 as '0' is a valid result
-        // $result_record_count = -1; // Initialise to -1 as '0' is a valid result
         while(!$is_results_ready) {
             // progress bar here
             $response = $this->apicontroller->getSearchJobStatus($job_id);
@@ -467,8 +457,6 @@ class QueryRunCommand extends Command
             switch($response['status_code']) {
                 case 200:
                     if($response['body']->state == "DONE GATHERING RESULTS") {
-                        // $results_count['messages'] = $response['body']->messageCount;
-                        // $results_count['records'] = $response['body']->recordCount;
                         $is_results_ready = true;
                     }
                     break;
@@ -489,11 +477,6 @@ class QueryRunCommand extends Command
         if(property_exists($job_status,"histogramBuckets")) {
             unset($job_status->histogramBuckets);
         }
-    
-        // if($results_count['messages'] == -1) {
-        //     $output->writeln("<error>Unknown failure for results - Exiting</error>");        
-        //     return Command::FAILURE;
-        // } else 
         
         if($job_status->messageCount == 0) {
             $output->writeln("<info>Query returned no results :(</info>");            
@@ -510,11 +493,10 @@ class QueryRunCommand extends Command
         }
 
         $output->writeln('');
-        // $output->writeln("Query result:" . print_r($job_status,true));
         $output->writeln("Query is ready!");
 
         $helper = $this->getHelper('question');
-        //Add the calculation for messages here. 
+        // TODO: Add the calculation for messages here. 
         // $estimated_log_file_bytes = ($job_status->messageCount)*500;
 
         // Ask user if they want to download messages

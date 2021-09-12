@@ -14,9 +14,7 @@ use GuzzleHttp\Client as GuzzHttpClient;
 class ApiController extends AbstractController /*extends SymfonyController*/
 {
     private $httpclient;
-    // private $jar;
     private $output;
-    // private $downloadedBytesProgress;
     
     public function __construct(String $default_creds_path, String $sumologic_api_end_point)
     {
@@ -38,7 +36,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                 'http_errors' => false
             ]
          );
-        // $this->jar = new \GuzzleHttp\Cookie\CookieJar;
     }
 
     public function makeApiRequest(
@@ -51,15 +48,9 @@ class ApiController extends AbstractController /*extends SymfonyController*/
         $path = (empty($api_end_point)) ? '' : '/' . $api_end_point; 
         $full_uri = SUMOLOGIC_JOB_SEARCH_API . $path;
         $this->output = $output;
-        // if(!empty($output)) {
-        //     $this->logger = new ConsoleLogger($output);
-        //     $this->logger->info('makeApiRequest full_uri: ' . $full_uri);
-        // }
 
         if(!empty($this->output)) {
             $this->downloadedBytesProgressBar = new ProgressBar($this->output, 0);
-            // $this->output->writeln(PHP_EOL."method: " . $method . PHP_EOL);
-            // $this->output->writeln(PHP_EOL."full_uri: " . $full_uri . PHP_EOL);
         }
 
         // Send the request.
@@ -96,7 +87,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
                         $this->downloadedBytesProgressBar->setMessage($date. ' ' . $timezone, 'date');
                         $this->downloadedBytesProgressBar->setMessage($downloadedBytes, 'downloadedBytes');
                         $this->downloadedBytesProgressBar->advance();
-                        // $this->downloadedBytesProgressBar->setMessage("full_uri: " . $full_uri);
                         $this->downloadedBytesProgressBar->display();          
                     }
                 },
@@ -146,9 +136,6 @@ class ApiController extends AbstractController /*extends SymfonyController*/
 
         } else {
             $ret = $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
-        }
-        if(!empty($ret)) {
-            // $output->writeln("getJobQueryResults: " . var_export($ret,true));
         }
         
         return $ret;
