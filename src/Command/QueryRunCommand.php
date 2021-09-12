@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Command;
 
 include_once(__DIR__.'/../../config/constants.php');
@@ -32,14 +33,11 @@ define('FORMAT_OPTIONS', array(
     'tab'=> array('ext' => 'tab' , 'delimiter' => "\t")
 ));
 
-class RequestQueryCommand extends Command
+
+class QueryRunCommand extends Command
 {
-    private $apicontroller;
-    private $organization_select_uuids;
-    private $organization_select_names;
-    
-    // Default command name
     protected static $defaultName = 'query:run';
+    protected static $defaultDescription = 'Run a Query and save results locally in a file. Use the \'--help\' option to see more details.';
 
     public function __construct(ApiController $apicontroller)
     {
@@ -47,26 +45,24 @@ class RequestQueryCommand extends Command
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
-      $this
-        // the short description shown while running "php bin/console list"
-        ->setDescription('Run a Query and save results locally in a file. Use the \'--help\' option to see more details.')
-
+        $this
+            ->setDescription(self::$defaultDescription)
         // the full command description shown when running the command with
         // the "--help" option
         ->setHelp('This command makes a request to the Sumologic Job Search API to run a Query and save results locally.' .PHP_EOL .
         PHP_EOL .
         'Examples ways to run the command:' .PHP_EOL.
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' .FORMAT_OPT. '=tab' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' .PHP_EOL . 
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
-        '  * ' . APP_COMMAND_NAME . ' ' . RequestQueryCommand::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' .FORMAT_OPT. '=tab' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' .PHP_EOL . 
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' .PHP_EOL .
+        '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --'  .FORMAT_OPT. '=tab' .PHP_EOL .
         PHP_EOL .
         'See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.' . PHP_EOL .
         'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
@@ -279,12 +275,13 @@ class RequestQueryCommand extends Command
 
         //Check if we are using the $query_file to get the query
         if(!empty($query_file)) {
-            $fsObject = new Filesystem();
-            if (!$fsObject->exists($query_file)) {
-                $output->writeln("<error>Sorry - No search query has been provided!\nPlease provide the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
+            if (!is_readable($query_file)) {
+                $output->writeln("<error>Sorry - The path to the search query file was not found or I cannot read it!\n" . 
+                "Please check the path to your query file or use the '" . QUERY_OPT . "' option.</error>");
                 return Command::FAILURE;
             }
         
+            $fsObject = new Filesystem();
             if(($query = file_get_contents($query_file)) === false) {
                 $output->writeln("<error>Oh dear! I am unable to read query file :(</error>");
                 return Command::FAILURE;
@@ -579,16 +576,18 @@ class RequestQueryCommand extends Command
             $progressBar1->advance($fetch_limit);
             $progressBar1->display();
             
-            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit,$output);
+            $return_results_as_array = ($file_format != 'json');
+            $response = $this->apicontroller->getQueryResults($job_id,$offset,$fetch_limit,$return_results_as_array,$output);
             if($file_format == 'json') {
                 if(!file_put_contents($path_to_save, json_encode($response['body']->$return_list,JSON_PRETTY_PRINT), FILE_APPEND)) {
                     return null;
                 }
             } else {
-                $response_arr=json_decode(json_encode($response['body']->$return_list), true);
+                // We get results back as an associative array
+                $response_arr=$response['body'][$return_list];
 
                 // Loop through each result item and add to file
-                foreach($response_arr as $result_item) {
+                foreach($response_arr as $key => $result_item) {
                     $item=$result_item;
                     if ($return_list != 'fields') {
                         unset($result_item['map']['_raw']);
@@ -601,12 +600,24 @@ class RequestQueryCommand extends Command
             }
 
             if($return_list == 'messages') {
-                if (sizeof(array_filter($response['body']->$return_list, function($value) {
-                    return $value->map->_collector === "Acquia Cloud Polaris";
-                }))) {
-                    $is_kubernetes = 1;
+                if(!$return_results_as_array) {
+                    // We have an object
+                    if (sizeof(array_filter($response['body']->$return_list, function($value) {
+                        return $value->map->_collector === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }
                 } else {
-                    $is_kubernetes = 0;
+                    // We have an array
+                    if (sizeof(array_filter($response['body'][$return_list], function($value) {
+                        return $value['map']['_collector'] === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }  
                 }
             }
 
@@ -709,3 +720,4 @@ class RequestQueryCommand extends Command
       return $bytes;
     }
 }
+
