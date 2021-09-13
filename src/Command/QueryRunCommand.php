@@ -475,7 +475,7 @@ class QueryRunCommand extends Command
         $output->writeln('');
         $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
         $save_to_path = null;
-        $result = $this->saveQueryResults($output,$job_id,$result_count,0,10000,$output_format,$results_list);
+        $result = $this->saveQueryResults($input,$output,$job_id,$result_count,0,10000,$output_format,$results_list);
         if(empty($result)) {
             $output->writeln("<error>Error saving Results :(</error>");
 
@@ -519,7 +519,9 @@ class QueryRunCommand extends Command
         return null;
     }
 
-    function saveQueryResults(OutputInterface $output, 
+    function saveQueryResults(
+            InputInterface $input,
+            OutputInterface $output, 
             String $job_id,
             int $total_records, 
             int $start_offset, 
@@ -634,16 +636,16 @@ class QueryRunCommand extends Command
 
             // Calculating the log file size. 
             $log_file_size = filesize($path_to_save);
-            $log_file_size = $this->calculate_log_file_size($log_file_size);
+            $log_file_size_human = $this->calculate_log_file_size($log_file_size);
 
             $progressBar2->setFormat('request_query_file_size_progress');
             $progressBar2->clear();
-            $progressBar2->setMessage($log_file_size, 'logFileSize');
+            $progressBar2->setMessage($log_file_size_human, 'logFileSize');
             $progressBar2->display();
 
             $helper = $this->getHelper('question');
             if ($log_file_size >= $log_size_upper_limit) {
-              $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
+              $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' ' . $log_size_upper_limit . ' Continue to retrieve more results?', false);
               $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*1024*1024); // multiples of bytes
               if (!$helper->ask($input, $output, $question)) {
                 $progressBar1->clear();
