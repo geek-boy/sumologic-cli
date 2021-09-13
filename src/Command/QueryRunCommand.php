@@ -171,6 +171,7 @@ class QueryRunCommand extends Command {
       }
     }
 
+
     // if we have been given a QUERY_OPT then we need to check if 
     // the other arguments are times or a query file
     if (!empty($query)) {
@@ -249,6 +250,7 @@ class QueryRunCommand extends Command {
       $helper = $this->getHelper('question');
       $question = new ConfirmationQuestion('<question>No end time has been given.' . PHP_EOL .
               'Do you want to use the time now (' . $end_time . ') ?</question>', false);
+
 
       if (!$helper->ask($input, $output, $question)) {
         $output->writeln('');
@@ -680,7 +682,8 @@ class QueryRunCommand extends Command {
             return $matches[1];
         }
 
-        return null;
+
+      return Command::FAILURE;
     }
   
   /**
@@ -726,5 +729,4 @@ class QueryRunCommand extends Command {
 
     return $bytes;
   }
-
 }
