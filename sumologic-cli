@@ -32,6 +32,7 @@ if (!$fsObject->exists(DEFAULT_CRED_FILE_PATH))
 $application = new Application("Sumologic CLI");
 
 $apicontroller = new ApiController(DEFAULT_CRED_FILE_PATH,SUMOLOGIC_JOB_SEARCH_API);
+
 // ... register commands
 $application->add(new QueryRunCommand($apicontroller));
 

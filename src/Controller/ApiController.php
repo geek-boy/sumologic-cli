@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+include_once(__DIR__.'/../../config/constants.php');
 
 use Symfony\Component\Yaml\Yaml;
 use GuzzleHttp\Client as GuzzHttpClient;
@@ -48,30 +49,31 @@ class ApiController extends AbstractController {
   /**
    *  @todo description
    * 
-   * @param type $default_creds_path
+   * @param String $default_creds_path
    *   Gets default Sumologic private login details
-   * @param type $sumologic_api_end_point
+   * @param String $sumologic_api_end_point
    *   Provides rest API end point.
    */
   public function __construct($default_creds_path, $sumologic_api_end_point) {
+    $this->output = NULL;
+    $this->downloadedBytesProgressBar = NULL;
+    
+    $creds = Yaml::parseFile($default_creds_path);
 
     // Creates HTTP object so it can be used in the class.
     $this->httpclient = new GuzzHttpClient(
-            [
+      [
         'base_uri' => $sumologic_api_end_point,
-        'cookies' => true,
+        'cookies' => false,
         'headers' => [
             'Content-type' => 'application/json',
             'Accept' => 'application/json'
         ],
-        'auth' => [
-            Yaml::parseFile($default_creds_path)['key'],
-            Yaml::parseFile($default_creds_path)['secret']
-        ],
+        'auth' => [$creds['key'], $creds['secret']],
         'http_errors' => false
-            ]
+      ]
     );
-    $this->jar = new \GuzzleHttp\Cookie\CookieJar;
+    // $this->jar = new \GuzzleHttp\Cookie\CookieJar;
   }
 
   /**
@@ -108,6 +110,10 @@ class ApiController extends AbstractController {
     // Send the request.
     $response = null;
     $options = [];
+    $downloadTotal = 0;
+    $downloadedBytes = 0;
+    $uploadTotal = 0;
+    $uploadedBytes = 0;
 
     if ($data !== null) {
       $options = ['body' => $data];
@@ -116,12 +122,17 @@ class ApiController extends AbstractController {
       if (!empty($this->output)) {
         $this->downloadedBytesProgressBar->setFormat('api_controller_downloaded_bytes');
         $this->downloadedBytesProgressBar->start();
+        $this->downloadedBytesProgressBar->setMessage("full_uri: " . $full_uri);
+        $this->downloadedBytesProgressBar->display();
       }
 
       $response = $this->httpclient->request($method, $full_uri, [
           'headers' => ['Accept: application/json'],
           'progress' => function (
-                  $downloadedBytes
+                  $downloadTotal,
+                  $downloadedBytes,
+                  $uploadTotal,
+                  $uploadedBytes
           ) {
             if (!empty($this->output)) {
               $timezone = date_default_timezone_get();
@@ -172,28 +183,33 @@ class ApiController extends AbstractController {
   /**
    *  @todo description
    * 
-   * @param String $jobid
-   *   @todo unknown. 
-   * @param int $offset
-   *   @todo unknown.
-   * @param int $limit
-   *   @todo unknown.
-   * @param bool $return_results_as_array
-   *   @todo unknown.
-   * @param OutputInterface $output
-   *   @todo unknown.
+   * @param String $jobid // Job ID for the query
+   * @param int $offset   // Return records starting at this offset    
+   * @param int $limit    // The number of records starting at offset to return 
+   * @param bool $return_messages // Return results as 'messages' or as 'records'
+   * @param bool $return_results_as_array // Return results as an array rather than as an object
+   * @param OutputInterface $output=null  // OutputInterface instance to print out to console
+   * 
    * @return array
    *   @todo unknown.
    */
-  public function getQueryResults(String $jobid, int $offset, int $limit, bool $return_results_as_array, OutputInterface $output = null) {
+  public function getJobQueryResults(
+    String $jobid,
+    int $offset,
+    int $limit,
+    bool $return_messages=true,
+    bool $return_results_as_array=false,
+    OutputInterface $output=null
+  ) {
+    $ret=null;
+    if (!$return_messages) {
+        $ret = $this->makeApiRequest('GET',$jobid . '/records?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
 
-    return $this->makeApiRequest(
-                    'GET',
-                    $jobid . '/messages?offset=' . $offset . '&limit=' . $limit,
-                    null,
-                    $return_results_as_array,
-                    $output
-    );
+    } else {
+        $ret = $this->makeApiRequest('GET',$jobid . '/messages?offset=' . $offset . '&limit='.$limit,null,$return_results_as_array,$output);
+    }
+    
+    return $ret;
+
   }
-
 }

@@ -8,12 +8,30 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use DateTime;
 use App\Controller\ApiController;
+
+define("ISO_DATE_FORMAT", "Y-m-d\TH:i:s");
+define("QUERY_FILE_PATH_ARG", "query_file_path");
+define("START_TIME_ARG", "start_time");
+define("END_TIME_ARG", "end_time");
+define("START_TIME_OPT", "start");
+define("END_TIME_OPT", "end");
+define("QUERY_OPT", "search-query");
+define("RESULTS_MESSAGES_OPT", "messages");
+define("RESULTS_AGGREGATE_RECORDS_OPT", "aggregate-records");
+define("RESULTS_FIELDS_OPT", "fields-only");
+define("FORMAT_OPT", "format");
+define('FORMAT_OPTIONS', array(
+    'json' => array('ext' => 'json', 'delimiter' => ''),
+    'csv' => array('ext' => 'csv', 'delimiter' => ","),
+    'tab'=> array('ext' => 'tab' , 'delimiter' => "\t")
+));
 
 /**
  * QueryRunCommand
@@ -53,20 +71,20 @@ class QueryRunCommand extends Command {
             // the full command description shown when running the command with
             // the "--help" option
             ->setHelp('This command makes a request to the Sumologic Job Search API to run a Query and save results locally.' . PHP_EOL .
-                    PHP_EOL .
-                    'Examples ways to run the command:' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . FORMAT_OPT . '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' . FORMAT_OPT . '=tab' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' . PHP_EOL .
-                    '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' . FORMAT_OPT . '=tab' . PHP_EOL .
-                    PHP_EOL .
-                    'See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.' . PHP_EOL .
-                    'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
+              PHP_EOL .
+              'Examples ways to run the command:' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . END_TIME_OPT . '="-7days" /home/user/query_file.txt 2021-06-05T11:09:00' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' .FORMAT_OPT. '=csv /home/user/query_file 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" 2021-06-05T11:09:00 2021-06-05T12:09:00' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' . FORMAT_OPT. '=tab' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --' . START_TIME_OPT . '="-2hours"' . PHP_EOL . 
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. RESULTS_FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour"' . PHP_EOL .
+              '  * ' . APP_COMMAND_NAME . ' ' . self::$defaultName . ' --' . QUERY_OPT . '="namespace=agoorah.apache-access" --'. RESULTS_FIELDS_OPT . ' --' . START_TIME_OPT . '="-2hours" --' . END_TIME_OPT . '="-1hour" --' . FORMAT_OPT. '=tab' . PHP_EOL .
+              PHP_EOL .
+              'See https://www.php.net/manual/en/class.datetimeinterface.php for ISO Date format.' . PHP_EOL .
+              'See https://www.php.net/manual/en/datetime.formats.relative.php for valid relative time formats.'
             )
 
             // Define Options
@@ -113,10 +131,22 @@ class QueryRunCommand extends Command {
                     'End time as relative time. Examples are: "-3 hours" "-1 week" "-7 days" "2021-06-05T11:09:01"'
             )
             ->addOption(
-                    FIELDS_OPT,
-                    null,
-                    InputOption::VALUE_NONE,
-                    'Print out only list of fields for query - Optional'
+                RESULTS_MESSAGES_OPT,
+                null,
+                InputOption::VALUE_NONE,
+                'Retrieve the results as messages'
+            )
+            ->addOption(
+                RESULTS_AGGREGATE_RECORDS_OPT,
+                null,
+                InputOption::VALUE_NONE,
+                'Retrieve the results as aggregated records'
+            )
+            ->addOption(
+                RESULTS_FIELDS_OPT,
+                null,
+                InputOption::VALUE_NONE,
+                'Print out only list of fields for query - Optional'
             )
             ->addArgument(QUERY_FILE_PATH_ARG, InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '" . QUERY_OPT . "' option.")
             ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
@@ -149,7 +179,7 @@ class QueryRunCommand extends Command {
     $format_option = $input->getOption(FORMAT_OPT);
 
     // Check Arguments and Options 
-    // Note that as all arguements are optional then we  need to check that 
+    // Note that as all arguments are optional then we  need to check that 
     // the value for an argument maybe assigned to a different argument.
     // Check if we have no queries being requested or 
     $query = $input->getOption(QUERY_OPT);
@@ -180,10 +210,22 @@ class QueryRunCommand extends Command {
       $query_file = null;
     }
 
-
-    $results_list = 'messages';
-    if ($input->getOption(FIELDS_OPT)) {
-      $results_list = 'fields';
+    /** Define the type of results to return
+     *  - pnly messages
+     *  - only aggregated records 
+     *  - only fields
+     *  - all messages and aggregated records
+     * */
+    $results_return_list = [];  //  Empty array means return all result types
+    
+    if ($input->getOption(RESULTS_MESSAGES_OPT)) {
+        array_push($results_return_list,'messages');
+    }
+    if ($input->getOption(RESULTS_AGGREGATE_RECORDS_OPT)) {
+        array_push($results_return_list,'records');
+    }
+    if ($input->getOption(RESULTS_FIELDS_OPT)) {
+        array_push($results_return_list,'fields');
     }
 
     // Check the requested output format options
@@ -209,7 +251,7 @@ class QueryRunCommand extends Command {
     }
 
 
-
+    // Check the time options
     if ($start_time_opt === NULL && $start_time === NULL) {
       if ($end_time_opt !== NULL) {
         $output->writeln("<error>Please provide a start time option ('--" . START_TIME_OPT . "') with the '--end' option or provide a start time in ISO Date format.</error>");
@@ -424,7 +466,6 @@ class QueryRunCommand extends Command {
       switch ($response['status_code']) {
         case 200:
           if ($response['body']->state == "DONE GATHERING RESULTS") {
-            $result_count = $response['body']->messageCount;
             $is_results_ready = true;
           }
           break;
@@ -440,13 +481,23 @@ class QueryRunCommand extends Command {
       sleep($delay);
     }
 
-    if ($result_count == -1) {
-      $output->writeln("<error>Unknown failure for results - Exiting</error>");
-      return Command::FAILURE;
-    } else if ($result_count == 0) {
-      $output->writeln("<info>Query returned no results :(</info>");
-      $output->writeln("<info>You may need to check your timeframes or your query.</info>");
-      return Command::SUCCESS;
+    $job_status = $response['body'];
+    if(property_exists($job_status,"histogramBuckets")) {
+        unset($job_status->histogramBuckets);
+    }
+    
+    if($job_status->messageCount == 0) {
+        $output->writeln("<info>Query returned no results :(</info>");            
+        $output->writeln("<info>You may need to check your timeframes or your query.</info>");            
+        return Command::SUCCESS;
+    }
+
+    if(in_array('records',$results_return_list)) {
+        if($job_status->recordCount == 0) {
+            $output->writeln("<info>Query has no aggregate results :(</info>");            
+            $output->writeln("<info>You may need to check your query.</info>");            
+            return Command::SUCCESS;
+        }
     }
 
 
@@ -456,27 +507,33 @@ class QueryRunCommand extends Command {
     //Add the calculation for messages here. 
     //$estimated_log_file_bytes = ($response['body']->messageCount) * 500;
 
-    $question = new ConfirmationQuestion('<question>There are ' . $result_count . ' messages. Do you want to download this log file ?</question>', false);
+    // Ask user if they want to download messages
+    $confirm_str = 'There are ' . $job_status->messageCount . ' messages.';
+    if(in_array('records',$results_return_list)) {
+        $confirm_str = 'There are ' . $job_status->recordCount . ' aggregate records.';
+    }
+    $question = new ConfirmationQuestion('<question>' . $confirm_str . ' Do you want to download this log file ?</question>', false);
 
     if (!$helper->ask($input, $output, $question)) {
-      $output->writeln('');
-      $output->writeln("<bg=white;fg=black>Ok! No results have been retrieved!</>");
+        $output->writeln('');
+        $output->writeln("<bg=white;fg=black>Ok! No results have been retrieved!</>");
 
-      return Command::SUCCESS;
+        return Command::SUCCESS;
     }
 
-    // User wants to download results - let's get them and save them locally. 
+    /** User wants to download results - let's get them and save them locally. */
     $output->writeln('');
     $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
-   // $save_to_path = null;
-    $result = $this->saveQueryResults($input, $output, $job_id, $result_count, 0, 10000, $output_format, $results_list);
-    if (empty($result)) {
-      $output->writeln("<error>Error saving Results :(</error>");
+    $save_to_path = null;
+    $result=$this->saveQueryResults($output,$job_id,$job_status,$results_return_list,$output_format);
 
-      return Command::FAILURE;
+    if(empty($result)) {
+        $output->writeln("<error>Error saving Results :(</error>");
+
+        return Command::FAILURE;
     }
 
-    // Results have been saved - Let the user know! 
+    /** Results have been saved - Let the user know! */
     $save_to_path = $result['file_path'];
     $is_kubernetes = $result['is_kubernetes'];
 
@@ -487,55 +544,98 @@ class QueryRunCommand extends Command {
     $output->writeln("<info>To view the results you could use the following shell command:</info>");
     $outputStyle = new OutputFormatterStyle('magenta', 'black', ['bold', 'blink']);
     $output->getFormatter()->setStyle('fire', $outputStyle);
-    if ($output_format == FORMAT_OPTIONS['json']['ext']) {
-      if ($is_kubernetes > 0) {
-        $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</fire>");
+    if($output_format == FORMAT_OPTIONS['json']['ext']) {
+      if($is_kubernetes > 0) {
+          $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"timestamp\", \"namespace_name\", \"kubernetes.labels.app\",\"kubernetes.container_name\",\"log\"}' | less</fire>");
       } else {
-        $output->writeln("<fire>cat  " . $save_to_path . " | jq '.[].map | { \"isodate\", \"namespace\", \"msg\"}' | less</fire>");
+          if(in_array('messages',$results_return_list)) {
+              $out_str = "cat  " . $save_to_path . " |  jq '.[] | {\"isodate\",\"_raw\"}' | less";
+          } else if(in_array('records',$results_return_list)) {
+              $out_str = "cat  " . $save_to_path . " | jq '.[]' | less";
+          } else {
+              $out_str = "cat  " . $save_to_path . " | jq '.[] | { \"isodate\", \"namespace\", \"msg\"}' | less";
+          }
+          $output->writeln("<fire>$out_str</fire>");
       }
     } else {
-      $output->writeln("<fire>cat  " . $save_to_path . " | less</fire>");
+        $output->writeln("<fire>cat  " . $save_to_path . " | less</fire>");
     }
     $output->writeln('');
-
 
     return Command::SUCCESS;
   }
 
 
   /**
+   * Query results can be requested to return either
+   * - only messages
+   * - only messages fields
+   * - both messages and fields
+   * - only records
+   * - only records fields
+   * - both records and fields 
+   * @param String $job_id,
+   * @param array $results_count, // $results_count['messages] = xxx
+   *                              // $results_count['messages][fields] = true 
+   *                              // $results_count['records] = xxx 
+   *                              // $results_count['records][fields] = true 
+   * @param int $start_offset, 
+   * @param int $limit, 
+   * @param String $file_format = 'json', 
+   * @param String $return_list = 'messages',   // Valid Values 
+   *                                           // 'messages', 'messages-fields', 'messages-all'
+   *                                           // 'records', 'records-fields', 'records-all'
+   * @param String $path_to_save = null
    * 
-   * @param InputInterface $input
-   * @param OutputInterface $output
-   * @param String $job_id
-   * @param int $total_records
-   * @param int $start_offset
-   * @param int $limit
-   * @param String $file_format
-   * @param String $return_list
-   * @param String $path_to_save
+   * 
    * @return int
-   */
+  */
   public function saveQueryResults(
-          InputInterface $input,
-          OutputInterface $output,
-          String $job_id,
-          int $total_records,
-          int $start_offset,
-          int $limit,
-          String $file_format = 'json',
-          String $return_list = 'messages', // Values 'messages', 'fields', 'all'
-          String $path_to_save = null) {
-    // @todo handle delimiter output for when $return_list='all'
-    $return_arr = [];
-    $is_kubernetes = false;
+    OutputInterface $output, 
+    String $job_id,
+    object $job_status, 
+    array $results_return_list = [],
+    String $file_format = 'json', 
+    int $start_offset=0, 
+    int $limit=5000, 
+    String $path_to_save = null
+    ) 
+{
+    $return_only_fields = false;
+
+    //TODO: handle delimiter output for when $return_list='all'
+    if (($key = array_search('fields', $results_return_list)) !== false) {
+        unset($results_return_list[$key]);
+        $return_only_fields=true;
+        $limit = 1;
+    }
+
+    if (empty($results_return_list)) {
+        $results_return_list = ['records','messages'];
+        $results_return_list = ['messages','records'];
+    }
+
+    $return_arr=[];
+    $is_kubernetes=false;
     $file_size_increment = 200;
-    $log_size_upper_limit = $file_size_increment * 1024 * 1024; // defined in bytes
+    $log_size_upper_limit = $file_size_increment*1024*1024; // defined in bytes
 
     // @todo Implement check of file size and records to retrieve 
     if (empty($path_to_save)) {
-      $today = date("Y-m-d-His");         // 2001-03-10-171618 
-      $path_to_save = DEFAULT_RESULTS_DIR_PATH . "/sumologic_results-" . $today . "." . $file_format;
+      $return_type_str = null;
+
+      if($return_only_fields) {
+          $return_type_str = 'fields-';
+      }
+      if(count($results_return_list) === 1) {
+           $return_type_str = $results_return_list[0] . '-';
+          if($return_only_fields) {
+              $return_type_str = $results_return_list[0] . '-fields-';
+          }
+      }
+
+      $today = date("Y-m-d-His"); // eg 2001-03-10-171618 
+      $path_to_save = DEFAULT_RESULTS_DIR_PATH . "/sumologic_results-" . $return_type_str . $today . "." . $file_format;
     }
 
     // Grab records in batches to ensure no memory exhaustion
@@ -559,104 +659,139 @@ class QueryRunCommand extends Command {
 
     $progressBar1 = new ProgressBar($section1);
     $progressBar1->setFormat('request_query_record_progress');
-    $progressBar1->setMessage("Starting to gather records");
-    $progressBar1->start($total_records);
     $progressBar2 = new ProgressBar($section2);
 
-    // If $return_list is 'fields' then we only need to grab the first set of these
-    while ($record_count <= $total_records) {
-      $upper = $record_count + (int) $fetch_limit;
-      if ($upper >= $total_records) {
-        $upper = $total_records;
-      }
-      $progressBar1->clear();
-      $progressBar1->setMessage($record_count, 'recordCount');
-      $progressBar1->setMessage($upper, 'upperLimit');
-      $progressBar1->advance($fetch_limit);
-      $progressBar1->display();
+    foreach($results_return_list as $result_type) {
+        $download_result_count = 0;
 
-      $return_results_as_array = ($file_format != 'json');
-      $response = $this->apicontroller->getQueryResults($job_id, $offset, $fetch_limit, $return_results_as_array, $output);
-      if ($file_format == 'json') {
-        if (!file_put_contents($path_to_save, json_encode($response['body']->$return_list, JSON_PRETTY_PRINT), FILE_APPEND)) {
-          return null;
+        $results_count = ($result_type == 'messages') ? $job_status->messageCount : $job_status->recordCount; 
+        $is_messages = ($result_type == 'messages');
+
+        $progressBar1->setMessage(PHP_EOL . "Starting to gather $result_type results" . PHP_EOL);
+        $progressBar1->start($results_count);
+
+        // If $return_list is 'fields' then we only need to grab the first set of these
+        while($results_count > 0 && $download_result_count <= $results_count) {
+            $upper = $download_result_count + (int) $fetch_limit;
+            if($upper >= $results_count) {
+                $upper = $results_count;
+            }
+            $progressBar1->clear();
+            $progressBar1->setMessage($result_type, 'recordType');
+            $progressBar1->setMessage($download_result_count, 'recordCount');
+            $progressBar1->setMessage($upper, 'upperLimit');
+            $progressBar1->advance($fetch_limit);
+            $progressBar1->display();
+            
+            $return_results_as_array = ($file_format != 'json');
+            $response = $this->apicontroller->getJobQueryResults($job_id,$offset,$fetch_limit,$is_messages,$return_results_as_array,$output);
+            
+            if($file_format == 'json') {
+                $results=$response['body'];
+
+                if($return_only_fields) {
+                    $results = $response['body']->fields;
+                } else {
+                    $results = $response['body']->$result_type;
+                    foreach ($results as $key => $item) {
+                        $results[$key] = $item->map;
+                    }
+                }
+
+                if(!file_put_contents($path_to_save, json_encode($results,JSON_PRETTY_PRINT), FILE_APPEND)) {
+                    return null;
+                }
+            } else {
+                /** TODO Fix up using $return_only_fields for arrays */
+                // We get results back as an associative array
+                $response_arr=$response['body'];
+
+                if($return_only_fields) {
+                    $fields = [];
+                    $fields['fields'] = $response['body']['fields'];
+                    $response_arr=$fields['fields'];
+                } else {
+                    $response_arr=$response['body'][$result_type];
+                }
+
+                // Add a heading before the results
+                if(!fwrite($fp,'******* ' .$result_type . ' *******' . PHP_EOL)) {
+                    return null;
+                }
+
+                // Loop through each result item and add to file
+                foreach($response_arr as $key => $result_item) {
+                    $item=$result_item;
+                    if (!$return_only_fields) {
+                        $item = $result_item['map'];
+                    }
+
+                    if(!fputcsv($fp, $item,FORMAT_OPTIONS[$file_format]['delimiter'])) {
+                        return null;
+                    }
+                }
+            }
+
+            if($result_type == 'messages') {
+                if(!$return_results_as_array) {
+                    // We have an object
+                    if (sizeof(array_filter($response['body']->$result_type, function($value) {
+                        return $value->map->_collector === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }
+                } else {
+                    // We have an array
+                    if (sizeof(array_filter($response['body'][$result_type], function($value) {
+                        return $value['map']['_collector'] === "Acquia Cloud Polaris";
+                    }))) {
+                        $is_kubernetes = 1;
+                    } else {
+                        $is_kubernetes = 0;
+                    }  
+                }
+            }
+
+            $download_result_count += $fetch_limit;
+            $offset += $fetch_limit;
+            if($upper != $results_count) {
+                $grab_count = $fetch_limit;
+                if($upper + $fetch_limit > $results_count) {
+                    $grab_count = $results_count - $upper;
+                }
+            }
+            $return_arr['file_path'] = $path_to_save;
+            $return_arr['is_kubernetes'] = $is_kubernetes;
+
+            // Calculating the log file size. 
+            $log_file_size = filesize($path_to_save);
+            $log_file_size = $this->calculate_log_file_size($log_file_size);
+
+            $progressBar2->setFormat('request_query_file_size_progress');
+            $progressBar2->clear();
+            $progressBar2->setMessage($log_file_size, 'logFileSize');
+            $progressBar2->display();
+
+            $helper = $this->getHelper('question');
+            if ($log_file_size >= $log_size_upper_limit) {
+                $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
+                $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*1024*1024); // multiples of bytes
+                if (!$helper->ask($input, $output, $question)) {
+                    $progressBar1->clear();
+                    $progressBar1->finish();
+                    $progressBar1->display();
+                    $progressBar2->finish();
+                    return $return_arr;
+                }
+            }
+
+            // If we are only getting 'fields' then our job here is done.
+            if ($return_only_fields) {
+                break;
+            }
         }
-      } else {
-        // We get results back as an associative array
-        $response_arr = $response['body'][$return_list];
-
-        // Loop through each result item and add to file
-        foreach ($response_arr as $key => $result_item) {
-          $item = $result_item;
-          if ($return_list != 'fields') {
-            unset($result_item['map']['_raw']);
-            $item = $result_item['map'];
-          }
-          if (!fputcsv($fp, $item, FORMAT_OPTIONS[$file_format]['delimiter'])) {
-            return null;
-          }
-        }
-      }
-
-      if ($return_list == 'messages') {
-        if (!$return_results_as_array) {
-          // We have an object
-          if (sizeof(array_filter($response['body']->$return_list, function ($value) {
-                            return $value->map->_collector === "Acquia Cloud Polaris";
-                          }))) {
-            $is_kubernetes = 1;
-          } else {
-            $is_kubernetes = 0;
-          }
-        } else {
-          // We have an array
-          if (sizeof(array_filter($response['body'][$return_list], function ($value) {
-                            return $value['map']['_collector'] === "Acquia Cloud Polaris";
-                          }))) {
-            $is_kubernetes = 1;
-          } else {
-            $is_kubernetes = 0;
-          }
-        }
-      }
-
-      $record_count += $fetch_limit;
-      $offset += $fetch_limit;
-      if ($upper != $total_records) {
-        $grab_count = $fetch_limit;
-        if ($upper + $fetch_limit > $total_records) {
-          $grab_count = $total_records - $upper;
-        }
-      }
-      $return_arr['file_path'] = $path_to_save;
-      $return_arr['is_kubernetes'] = $is_kubernetes;
-
-      // Calculating the log file size. 
-      $log_file_size = filesize($path_to_save);
-      $log_file_size = $this->calculate_log_file_size($log_file_size);
-
-      $progressBar2->setFormat('request_query_file_size_progress');
-      $progressBar2->clear();
-      $progressBar2->setMessage($log_file_size, 'logFileSize');
-      $progressBar2->display();
-
-      $helper = $this->getHelper('question');
-      if ($log_file_size >= $log_size_upper_limit) {
-        $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
-        $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment * 1024 * 1024); // multiples of bytes
-        if (!$helper->ask($input, $output, $question)) {
-          $progressBar1->clear();
-          $progressBar1->finish();
-          $progressBar1->display();
-          $progressBar2->finish();
-          return $return_arr;
-        }
-      }
-
-      // If we are only getting 'fields' then our job here is done.
-      if ($return_list == 'fields') {
-        break;
-      }
     }
 
     fclose($fp);
@@ -688,7 +823,7 @@ class QueryRunCommand extends Command {
   
   /**
    * 
-   * @param type $check_time
+   * @param String $check_time
    * @return mixed
    */
    public function isDateFormatCorrect($check_time) {
