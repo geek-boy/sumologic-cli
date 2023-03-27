@@ -27,6 +27,8 @@ define("QUERY_OPT", "search-query");
 define("RESULTS_MESSAGES_OPT", "messages");
 define("RESULTS_AGGREGATE_RECORDS_OPT", "aggregate-records");
 define("RESULTS_FIELDS_OPT", "fields-only");
+define("RESULTS_DOWNLOAD", "--download");
+define("RESULTS_CONTINUE_DOWNLOAD", "--download-do-not-confirm-size");
 define("FORMAT_OPT", "format");
 define('FORMAT_OPTIONS', array(
     'json' => array('ext' => 'json', 'delimiter' => ''),
@@ -155,9 +157,21 @@ class QueryRunCommand extends Command {
                 InputOption::VALUE_NONE,
                 'Print out only list of fields for query - Optional'
             )
-            ->addArgument(QUERY_FILE_PATH_ARG, InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '" . QUERY_OPT . "' option.")
-            ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
-            ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
+            ->addOption(
+              RESULTS_DOWNLOAD,
+              null,
+              InputOption::VALUE_NONE,
+              'Download the results without confirmation'
+          )
+          ->addOption(
+            RESULTS_CONTINUE_DOWNLOAD,
+            null,
+            InputOption::VALUE_NONE,
+            'Do not check file size during download'
+        )
+        ->addArgument(QUERY_FILE_PATH_ARG, InputArgument::OPTIONAL, "(Optional) The path to the file containing the Sumologic search query you wish to run. If you do not use this option then you must provide the '" . QUERY_OPT . "' option.")
+        ->addArgument(START_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The start time for the Query in ISO Date format. Example - 2010-01-28T15:00:00')
+        ->addArgument(END_TIME_ARG, InputArgument::OPTIONAL, '(Optional) The end time for the Query in ISO Date format. Example - 2010-01-28T15:30:00')
     ;
   }
 
@@ -184,6 +198,8 @@ class QueryRunCommand extends Command {
     $end_time_opt = $input->getOption(END_TIME_OPT);
 
     $format_option = $input->getOption(FORMAT_OPT);
+
+    $user_confirm_size_download = empty(RESULTS_CONTINUE_DOWNLOAD);
 
     // Check Arguments and Options 
     // Note that as all arguments are optional then we  need to check that 
@@ -510,29 +526,31 @@ class QueryRunCommand extends Command {
 
     $output->writeln('');
     $output->writeln("Query is ready!");
-    $helper = $this->getHelper('question');
-    //Add the calculation for messages here. 
-    //$estimated_log_file_bytes = ($response['body']->messageCount) * 500;
+    if(!empty($input->getOption(FORMAT_OPT))) {
+      $helper = $this->getHelper('question');
+      //Add the calculation for messages here. 
+      //$estimated_log_file_bytes = ($response['body']->messageCount) * 500;
 
-    // Ask user if they want to download messages
-    $confirm_str = 'There are ' . $job_status->messageCount . ' messages.';
-    if(in_array('records',$results_return_list)) {
-        $confirm_str = 'There are ' . $job_status->recordCount . ' aggregate records.';
-    }
-    $question = new ConfirmationQuestion('<question>' . $confirm_str . ' Do you want to download this log file ?</question>', false);
+      // Ask user if they want to download messages
+      $confirm_str = 'There are ' . $job_status->messageCount . ' messages.';
+      if(in_array('records',$results_return_list)) {
+          $confirm_str = 'There are ' . $job_status->recordCount . ' aggregate records.';
+      }
+      $question = new ConfirmationQuestion('<question>' . $confirm_str . ' Do you want to download this log file ?</question>', false);
 
-    if (!$helper->ask($input, $output, $question)) {
-        $output->writeln('');
-        $output->writeln("<bg=white;fg=black>Ok! No results have been retrieved!</>");
+      if (!$helper->ask($input, $output, $question)) {
+          $output->writeln('');
+          $output->writeln("<bg=white;fg=black>Ok! No results have been retrieved!</>");
 
-        return Command::SUCCESS;
+          return Command::SUCCESS;
+      }
     }
 
     /** User wants to download results - let's get them and save them locally. */
     $output->writeln('');
     $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
     $save_to_path = null;
-    $result=$this->saveQueryResults($input,$output,$job_id,$job_status,$results_return_list,$output_format);
+    $result=$this->saveQueryResults($input,$output,$job_id,$job_status,$results_return_list,$output_format,$user_confirm_size_download);
 
     if(empty($result)) {
         $output->writeln("<error>Error saving Results :(</error>");
@@ -590,7 +608,8 @@ class QueryRunCommand extends Command {
    *                              // $results_count['records][fields] = true 
    * @param int $start_offset, 
    * @param int $limit, 
-   * @param String $file_format = 'json', 
+   * @param String $file_format = 'json',
+   * @param bool $user_confirm_continue_download = true,
    * @param String $return_list = 'messages',   // Valid Values 
    *                                           // 'messages', 'messages-fields', 'messages-all'
    *                                           // 'records', 'records-fields', 'records-all'
@@ -605,7 +624,8 @@ class QueryRunCommand extends Command {
     $job_id,
     $job_status, 
     $results_return_list = [],
-    $file_format = 'json', 
+    $file_format = 'json',
+    $user_confirm_continue_download = true,
     $start_offset=0, 
     $limit=5000, 
     $path_to_save = null
@@ -702,14 +722,17 @@ class QueryRunCommand extends Command {
                 if($return_only_fields) {
                     $results = $response['body']->fields;
                 } else {
+                  if(property_exists($response['body'], $result_type)) { 
                     $results = $response['body']->$result_type;
                     foreach ($results as $key => $item) {
                         $results[$key] = $item->map;
                     }
+                  }
                 }
-
-                if(!file_put_contents($path_to_save, json_encode($results,JSON_PRETTY_PRINT), FILE_APPEND)) {
-                    return null;
+                if(property_exists($response['body'], $result_type)) { 
+                  if(!file_put_contents($path_to_save, json_encode($results,JSON_PRETTY_PRINT), FILE_APPEND)) {
+                      return null;
+                  }
                 }
             } else {
                 /** TODO Fix up using $return_only_fields for arrays */
@@ -744,6 +767,7 @@ class QueryRunCommand extends Command {
 
             if($result_type == 'messages') {
                 if(!$return_results_as_array) {
+                  if(property_exists($response['body'], $result_type)) {
                     // We have an object
                     if (sizeof(array_filter($response['body']->$result_type, function($value) {
                         return $value->map->_collector === "Acquia Cloud Polaris";
@@ -752,6 +776,7 @@ class QueryRunCommand extends Command {
                     } else {
                         $is_kubernetes = 0;
                     }
+                  }
                 } else {
                     // We have an array
                     if (sizeof(array_filter($response['body'][$result_type], function($value) {
@@ -784,18 +809,20 @@ class QueryRunCommand extends Command {
             $progressBar2->setMessage($log_file_size, 'logFileSize');
             $progressBar2->display();
 
-            $helper = $this->getHelper('question');
-            if ($log_file_size >= $log_size_upper_limit) {
-                $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
-                $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*1024*1024); // multiples of bytes
+            if($user_confirm_continue_download) {
+              $helper = $this->getHelper('question');
+              if ($log_file_size >= $log_size_upper_limit) {
+                  $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
+                  $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*  24*1024); // multiples of bytes
 
-                if (!$helper->ask($input, $output, $question)) {
-                    $progressBar1->clear();
-                    $progressBar1->finish();
-                    $progressBar1->display();
-                    $progressBar2->finish();
-                    return $return_arr;
-                }
+                  if (!$helper->ask($input, $output, $question)) {
+                      $progressBar1->clear();
+                      $progressBar1->finish();
+                      $progressBar1->display();
+                      $progressBar2->finish();
+                      return $return_arr;
+                  }
+              }
             }
 
             // If we are only getting 'fields' then our job here is done.
