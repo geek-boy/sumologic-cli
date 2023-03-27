@@ -10,3 +10,4 @@
 ###< symfony/framework-bundle ###
 .DS_Store
 nbproject/*
+sumologic-cli-wrapper

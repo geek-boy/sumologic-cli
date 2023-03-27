@@ -5,6 +5,7 @@ namespace App\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Filesystem\Filesystem;
@@ -53,8 +54,14 @@ class QueryRunCommand extends Command {
   protected static $defaultDescription = 'Run a Query and save results locally in a file. Use the \'--help\' option to see more details.';
 
   /**
+   * @var App\Controller\ApiController
+   *  @todo unknown.
+   */
+  protected $apicontroller = null;
+
+  /**
    * 
-   * @param ApiController $apicontroller
+   * @param App\Controller\ApiController $apicontroller
    */
   public function __construct(ApiController $apicontroller) {
     $this->apicontroller = $apicontroller;
@@ -525,7 +532,7 @@ class QueryRunCommand extends Command {
     $output->writeln('');
     $output->writeln("<bg=black;fg=magenta;options=bold>Grabbing results ...</>");
     $save_to_path = null;
-    $result=$this->saveQueryResults($output,$job_id,$job_status,$results_return_list,$output_format);
+    $result=$this->saveQueryResults($input,$output,$job_id,$job_status,$results_return_list,$output_format);
 
     if(empty($result)) {
         $output->writeln("<error>Error saving Results :(</error>");
@@ -573,7 +580,9 @@ class QueryRunCommand extends Command {
    * - both messages and fields
    * - only records
    * - only records fields
-   * - both records and fields 
+   * - both records and fields
+   * @param InputInterface $input
+   * @param ConsoleOutputInterface $output
    * @param String $job_id,
    * @param array $results_count, // $results_count['messages] = xxx
    *                              // $results_count['messages][fields] = true 
@@ -591,15 +600,16 @@ class QueryRunCommand extends Command {
    * @return int
   */
   public function saveQueryResults(
-    OutputInterface $output, 
-    String $job_id,
-    object $job_status, 
-    array $results_return_list = [],
-    String $file_format = 'json', 
-    int $start_offset=0, 
-    int $limit=5000, 
-    String $path_to_save = null
-    ) 
+    $input,
+    $output, 
+    $job_id,
+    $job_status, 
+    $results_return_list = [],
+    $file_format = 'json', 
+    $start_offset=0, 
+    $limit=5000, 
+    $path_to_save = null
+  ) 
 {
     $return_only_fields = false;
 
@@ -778,6 +788,7 @@ class QueryRunCommand extends Command {
             if ($log_file_size >= $log_size_upper_limit) {
                 $question = new ConfirmationQuestion('Current log file size is ' . $log_file_size . ' Continue to retrieve more results?', false);
                 $log_size_upper_limit = $log_size_upper_limit + ($file_size_increment*1024*1024); // multiples of bytes
+
                 if (!$helper->ask($input, $output, $question)) {
                     $progressBar1->clear();
                     $progressBar1->finish();
@@ -805,8 +816,8 @@ class QueryRunCommand extends Command {
   
   /**
    * 
-   * @param type $href
-   * @return type
+   * @param string $href
+   * @return int
    */
   public function getQueryJobID($href) {
         $pattern = str_replace("/","\/",SUMOLOGIC_JOB_SEARCH_API);
@@ -843,7 +854,7 @@ class QueryRunCommand extends Command {
   /**
    * Calculates log file size and returns the file size in KB, MB or GB.
    * 
-   * @param type $bytes
+   * @param int $bytes
    * @return string
    */
   public function calculate_log_file_size($bytes) {
