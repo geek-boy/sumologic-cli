@@ -399,8 +399,9 @@ class QueryRunCommand extends Command {
     $output->writeln("");
 
     // Clean up formatting so as to pass this properly to API end
-    $query = str_replace('"', '\"', $query);
-    $query = str_replace("\n", '', $query);
+    $query = str_replace("\n", '', $query); // remove all newline characters
+    $query = str_replace('\\', "\\\\", $query); // remove all back slash (\) characters
+    $query = str_replace('"', '\"', $query); // replace all quote characters with back slash (\) + quote (\")
 
     // @todo validate $query
     $json_query = '{"query" :"' . $query . '",' .
@@ -430,6 +431,8 @@ class QueryRunCommand extends Command {
         $output->writeln("<error>Check the query format !</error>");
         $output->writeln("<error>Status Code: " . $response['status_code'] . "</error>");
         $output->writeln("<error>" . $response['reason'] . "</error>");
+        $output->writeln("<error>\tOriginal query:</error>");
+        $output->writeln("<error>\t" . $json_query . "</error>");
         return Command::FAILURE;
 
       case 401:
